@@ -1,0 +1,2300 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Pengurusan & Hub Analisis PILL v3.0</title>
+  
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  
+  <!-- Icons & ChartJS -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  
+  <!-- TomSelect CSS & JS -->
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.complete.min.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-user-select: none; user-select: none; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .custom-checkbox { accent-color: #4f46e5; width: 18px; height: 18px; cursor: pointer; }
+    
+    /* Modern Loading Ring */
+    @keyframes spin-modern { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loader-ring {
+        display: inline-block; width: 4rem; height: 4rem; border-radius: 50%;
+        border: 4px solid #e0e7ff; border-top-color: #4f46e5;
+        animation: spin-modern 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    }
+
+    /* TomSelect Custom Styling */
+    .ts-control { border-radius: 0.5rem; padding: 0.65rem 0.75rem; border-color: #e2e8f0; background-color: #fff; }
+    .ts-control.focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15); }
+    .ts-dropdown { border-radius: 0.5rem; border-color: #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); z-index: 99; }
+    .tab-btn.active { color: #4f46e5; border-color: #4f46e5; background-color: #f5f3ff; }
+  </style>
+</head>
+<body class="antialiased text-slate-800 p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto">
+    
+    <!-- MASTER NAVIGATION HEADER -->
+    <header class="bg-white shadow-sm border border-slate-200 rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Hub Pengurusan PILL</h1>
+        <p class="text-sm text-slate-500 mt-1 font-medium">Sistem Berpusat Perancangan, Keberhasilan, dan Semakan Rekod Intervensi</p>
+      </div>
+      
+      <nav class="flex rounded-xl bg-slate-100 p-1 border border-slate-200 w-full md:w-auto">
+        <button onclick="switchTab('rancang')" id="tab-rancang" class="tab-btn active flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-600 border border-transparent transition-all shrink-0">
+          <i class="ph-bold ph-pencil-line"></i> Perancangan
+        </button>
+        <button onclick="switchTab('keberhasilan')" id="tab-keberhasilan" class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-600 border border-transparent transition-all shrink-0">
+          <i class="ph-bold ph-chart-line-up"></i> Keberhasilan
+        </button>
+        <button onclick="switchTab('semakan')" id="tab-semakan" class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-600 border border-transparent transition-all shrink-0">
+          <i class="ph-bold ph-folder-lock"></i> Semakan
+        </button>
+      </nav>
+    </header>
+
+    <!-- LOADING STATE OVERLAY (MODERN) -->
+    <div id="master-loading" class="fixed inset-0 bg-slate-100/80 backdrop-blur-sm z-[100] flex items-center justify-center hidden transition-opacity duration-300">
+      <div class="bg-white p-10 rounded-3xl shadow-2xl max-w-sm w-full text-center border border-slate-100">
+        <div class="flex justify-center mb-8"><div class="loader-ring"></div></div>
+        <h2 id="loading-title" class="text-xl font-extrabold text-slate-800 mb-2 tracking-wide">Memproses Data</h2>
+        <p id="loading-subtitle" class="text-sm text-slate-500 mb-8">Sila tunggu sebentar...</p>
+        <div class="w-full bg-indigo-50 rounded-full h-2.5 mb-3 overflow-hidden">
+            <div id="master-loading-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-400 font-medium px-1 uppercase tracking-wider">
+            <span>Sila tunggu sebentar...</span>
+            <span id="master-loading-perc">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: BORANG PERANCANGAN PILL (MODUL 3) -->
+    <!-- ========================================================================= -->
+    <section id="content-rancang" class="tab-content animate-fadeIn block">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 relative min-h-[500px]">
+        
+        <div id="rancang-successScreen" class="hidden flex flex-col items-center justify-center p-8 text-center h-full min-h-[400px]">
+          <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6"><i class="ph-fill ph-check-circle text-5xl"></i></div>
+          <h2 class="text-2xl font-bold text-slate-900 mb-2">Penghantaran Berjaya!</h2>
+          <p id="rancang-successText" class="text-slate-500 mb-6 max-w-md">Pelan intervensi anda telah disimpan ke pangkalan data.</p>
+          <div class="flex gap-4">
+            <button onclick="resetRancangBorang()" class="px-6 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-sm">Isi Borang Baharu</button>
+            <a id="rancang-pdfBtn" href="#" target="_blank" class="hidden px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm flex items-center gap-2"><i class="ph-bold ph-file-pdf"></i> Buka PDF / Slide</a>
+          </div>
+        </div>
+
+        <div id="rancang-formContainer">
+          <div class="mb-10 max-w-3xl mx-auto">
+            <div class="flex items-center justify-between px-4 relative">
+              <div id="step-dot-1" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 border-indigo-600 bg-indigo-600 text-white z-10 scale-110">1</div>
+              <div id="step-line-1" class="flex-1 h-1 bg-slate-200 mx-2 rounded"></div>
+              <div id="step-dot-2" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-white text-slate-400 z-10">2</div>
+              <div id="step-line-2" class="flex-1 h-1 bg-slate-200 mx-2 rounded"></div>
+              <div id="step-dot-3" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-white text-slate-400 z-10">3</div>
+              <div id="step-line-3" class="flex-1 h-1 bg-slate-200 mx-2 rounded"></div>
+              <div id="step-dot-4" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-white text-slate-400 z-10">4</div>
+              <div id="step-line-4" class="flex-1 h-1 bg-slate-200 mx-2 rounded"></div>
+              <div id="step-dot-5" class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-white text-slate-400 z-10">5</div>
+            </div>
+            <div class="text-center mt-6 text-base font-bold text-slate-700" id="rancang-stepLabel">Langkah 1: Kenal Pasti Kumpulan Tumpuan</div>
+          </div>
+
+          <form id="rancang-form" novalidate>
+            <!-- Wizard Step 1 -->
+            <div id="rancang-wizard-1" class="block space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-1">
+                  <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Mata Pelajaran</label>
+                  <select id="rancang-subject" class="w-full" required><option value="">Pilih Subjek</option></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Sesi</label>
+                  <select id="rancang-sesi" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-white text-sm" required>
+                    <option value="">Pilih Sesi</option>
+                    <option>Pertengahan Tahun</option>
+                    <option>Akhir Tahun</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tahun / Kalendar</label>
+                  <input type="number" id="rancang-year" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" required />
+                </div>
+              </div>
+
+              <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div>
+                  <h4 class="font-bold text-indigo-900 text-sm flex items-center gap-2"><i class="ph-fill ph-database"></i> Integrasi Data PBD</h4>
+                  <p class="text-xs text-indigo-700 mt-1">Data murid TP1 & TP2 disaring secara automatik apabila subjek dipilih.</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="p-4 bg-red-50 border border-red-100 rounded-xl flex justify-between items-center">
+                  <span class="text-xs font-bold text-red-900 uppercase">TP1 (Tunas Harapan 1)</span>
+                  <span id="rancang-countTH1" class="font-black text-red-700 text-2xl">0</span>
+                </div>
+                <div class="p-4 bg-orange-50 border border-orange-100 rounded-xl flex justify-between items-center">
+                  <span class="text-xs font-bold text-orange-900 uppercase">TP2 (Tunas Harapan 2)</span>
+                  <span id="rancang-countTH2" class="font-black text-orange-700 text-2xl">0</span>
+                </div>
+              </div>
+              <div id="rancang-previewContainer"></div>
+            </div>
+
+            <!-- Wizard Step 2 -->
+            <div id="rancang-wizard-2" class="hidden space-y-4">
+              <h3 class="text-md font-bold text-slate-800">02. Analisis Punca Masalah (Root Cause)</h3>
+              <div id="rancang-problemsContainer" class="space-y-3"></div>
+              <button type="button" onclick="addProblemRow()" class="w-full py-2.5 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold text-indigo-600 hover:bg-slate-50 flex items-center justify-center gap-1"><i class="ph-bold ph-plus"></i> Tambah Masalah</button>
+            </div>
+
+            <!-- Wizard Step 3 -->
+            <div id="rancang-wizard-3" class="hidden space-y-4">
+              <h3 class="text-md font-bold text-slate-800">03. Cadangan Intervensi Spesifik</h3>
+              <div id="rancang-interventionsContainer" class="space-y-4"></div>
+            </div>
+
+            <!-- Wizard Step 4 -->
+            <div id="rancang-wizard-4" class="hidden space-y-4">
+              <h3 class="text-md font-bold text-slate-800">04. Tetapkan Keutamaan Strategik</h3>
+              
+              <div class="mb-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <div class="bg-slate-50 py-2 border-b border-slate-200 rounded-t-xl">
+                    <p class="text-[11px] font-bold text-slate-600 text-center uppercase tracking-wider">Panduan Matriks Keutamaan (Impact vs Effort)</p>
+                </div>
+                <div class="relative pl-14 pb-12 pt-8 pr-8 bg-slate-50/50 rounded-b-xl">
+                    <!-- Paksi Y (Impact) -->
+                    <div class="absolute left-10 top-6 bottom-10 w-[2px] bg-slate-800 z-10"></div>
+                    <div class="absolute left-[37px] top-4 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[8px] border-transparent border-b-slate-800 z-10"></div>
+                    <div class="absolute left-[-5px] top-1/2 -translate-y-1/2 -rotate-90 font-black text-slate-500 text-[10px] tracking-widest origin-center z-10">IMPACT</div>
+                    <div class="absolute left-3 top-3 font-bold text-slate-500 text-[10px] z-10">High</div>
+                    
+                    <!-- Paksi X (Effort) -->
+                    <div class="absolute left-10 bottom-10 right-6 h-[2px] bg-slate-800 z-10"></div>
+                    <div class="absolute right-4 bottom-[37px] w-0 h-0 border-t-[6px] border-b-[6px] border-l-[8px] border-transparent border-l-slate-800 z-10"></div>
+                    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 font-black text-slate-500 text-[10px] tracking-widest z-10">EFFORT</div>
+                    <div class="absolute right-4 bottom-5 font-bold text-slate-500 text-[10px] z-10">High</div>
+
+                    <!-- Grid -->
+                    <div class="grid grid-cols-2 gap-4 text-center text-[11px] font-bold relative z-20 min-h-[140px]">
+                      <div class="bg-green-100 text-green-700 p-4 rounded-xl border-2 border-green-300 shadow-sm flex flex-col justify-center items-center">🟩 PILIH & LAKSANA<span class="font-normal mt-1 text-[10px]">(Impak Tinggi, Usaha Rendah)</span></div>
+                      <div class="bg-red-100 text-red-700 p-4 rounded-xl border-2 border-red-300 shadow-sm flex flex-col justify-center items-center">🟥 TELITI SEMULA<span class="font-normal mt-1 text-[10px]">(Impak Tinggi, Usaha Tinggi)</span></div>
+                      <div class="bg-orange-100 text-orange-700 p-4 rounded-xl border-2 border-orange-300 shadow-sm flex flex-col justify-center items-center">🟧 BOLEH DIPERTIMBANGKAN<span class="font-normal mt-1 text-[10px]">(Impak Rendah, Usaha Rendah)</span></div>
+                      <div class="bg-yellow-100 text-yellow-700 p-4 rounded-xl border-2 border-yellow-300 shadow-sm flex flex-col justify-center items-center">🟨 PERLU ELAKKAN<span class="font-normal mt-1 text-[10px]">(Impak Rendah, Usaha Tinggi)</span></div>
+                    </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 gap-4 mt-2">
+                <div class="bg-red-50/40 p-4 rounded-xl border border-red-100 space-y-3">
+                  <h4 class="font-bold text-red-900 text-xs uppercase flex items-center gap-1"><i class="ph-fill ph-users"></i> Kumpulan TP1</h4>
+                  <div id="rancang-priorityTH1" class="space-y-2"></div>
+                </div>
+                <div class="bg-orange-50/40 p-4 rounded-xl border border-orange-100 space-y-3">
+                  <h4 class="font-bold text-orange-900 text-xs uppercase flex items-center gap-1"><i class="ph-fill ph-users"></i> Kumpulan TP2</h4>
+                  <div id="rancang-priorityTH2" class="space-y-2"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wizard Step 5 -->
+            <div id="rancang-wizard-5" class="hidden space-y-6">
+              <h3 class="text-md font-bold text-slate-800">05. Rangka Pelan Tindakan</h3>
+              <div class="space-y-6">
+                <div>
+                  <h4 class="font-bold text-red-800 text-sm mb-3">Tindakan Kumpulan Tunas Harapan 1 (TP1)</h4>
+                  <div id="rancang-planTH1" class="space-y-4"></div>
+                </div>
+                <hr>
+                <div>
+                  <h4 class="font-bold text-orange-800 text-sm mb-3">Tindakan Kumpulan Tunas Harapan 2 (TP2)</h4>
+                  <div id="rancang-planTH2" class="space-y-4"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wizard Bottom Nav -->
+            <div class="mt-8 pt-4 border-t flex justify-between items-center">
+              <button type="button" id="rancang-prevBtn" onclick="navigateWizard(-1)" class="hidden px-5 py-2 rounded-lg border text-slate-600 text-sm font-semibold hover:bg-slate-50">Kembali</button>
+              <div class="ml-auto flex gap-2">
+                <button type="button" id="rancang-nextBtn" onclick="navigateWizard(1)" class="px-6 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 shadow-sm">Seterusnya</button>
+                <button type="button" id="rancang-draftBtn" onclick="simpanDrafSemasa()" class="hidden px-6 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 shadow-sm flex items-center gap-1"><i class="ph-bold ph-floppy-disk"></i> Simpan Draf</button>
+                <button type="button" id="rancang-submitBtn" onclick="hantarBorangRancang()" class="hidden px-6 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center gap-1"><i class="ph-bold ph-paper-plane-right"></i> Hantar & Jana PDF</button>
+              </div>
+            </div>
+            <div id="rancang-alertMsg" class="mt-3 text-center text-xs font-bold hidden"></div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: LAPORAN KEBERHASILAN PILL (MODUL 5) -->
+    <!-- ========================================================================= -->
+    <section id="content-keberhasilan" class="tab-content animate-fadeIn hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Mata Pelajaran</label>
+            <select id="hasil-subject" class="w-full"><option value="">Pilih Subjek</option></select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Sesi</label>
+            <select id="hasil-sesi" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white">
+              <option value="">Pilih Sesi</option>
+              <option>Pertengahan Tahun</option>
+              <option>Akhir Tahun</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tahun / Kalendar</label>
+            <input type="number" id="hasil-year" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm" value="2026">
+          </div>
+        </div>
+
+        <div class="bg-indigo-50/50 rounded-xl border border-indigo-100 p-5 flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm">Muat Naik Fail Murid Tumpuan</h4>
+            <p class="text-xs text-slate-500 mt-0.5">Data murid disaring secara automatik. Sila import fail CSV TP Terkini di bawah.</p>
+          </div>
+        </div>
+
+        <!-- Dashboard Kerja Keberhasilan -->
+        <div id="hasil-dashboardArea" class="hidden space-y-6">
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm">Senarai Murid Intervensi</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Kemas kini pencapaian TP terkini murid secara pukal atau manual di bawah.</p>
+            </div>
+            <div class="flex gap-2">
+              <input type="file" id="hasil-csvLatestInput" accept=".csv" class="hidden" onchange="bacaCsvTPTerkini(this)">
+              <button onclick="document.getElementById('hasil-csvLatestInput').click()" class="text-xs bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-sm"><i class="ph-bold ph-file-csv text-base"></i> Import TP Terkini (CSV)</button>
+            </div>
+            <div class="flex gap-2 text-center text-xs font-bold">
+              <div class="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">Meningkat: <span id="hasil-statImproved">0</span></div>
+              <div class="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-md">Kekal: <span id="hasil-statStagnant">0</span></div>
+              <div class="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md">TD: <span id="hasil-statTD">0</span></div>
+              <div class="px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-md">Pindah: <span id="hasil-statPindah">0</span></div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto max-h-[350px] border border-slate-200 rounded-xl custom-scroll">
+            <table class="w-full text-sm text-left border-collapse">
+              <thead class="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 border-b shadow-sm">
+                <tr><th class="px-4 py-3">Bil</th><th class="px-4 py-3">Nama Murid</th><th class="px-4 py-3">Kelas</th><th class="px-4 py-3 text-center">TP Asal</th><th class="px-4 py-3 text-center bg-indigo-50/40 text-indigo-800 font-bold">TP Terkini</th><th class="px-4 py-3 text-center">Status</th></tr>
+              </thead>
+              <tbody id="hasil-studentTableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+
+          <!-- Graf Analytics Visual -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-xl border p-5 lg:col-span-2">
+              <h4 class="font-bold text-slate-700 text-xs uppercase mb-4 tracking-wider">Perbandingan Sebelum vs Selepas Intervensi</h4>
+              <div class="relative h-72"><canvas id="hasil-chartBar"></canvas></div>
+              <div class="mt-4 flex justify-between items-center bg-slate-50 rounded-lg p-3 text-xs font-bold border"><span>Kadar Peningkatan Keseluruhan</span><span class="text-lg text-emerald-600" id="hasil-successRateText">0%</span></div>
+            </div>
+            <div class="bg-white rounded-xl border p-5 flex flex-col items-center justify-center">
+              <h4 class="font-bold text-slate-700 text-xs uppercase mb-4 tracking-wider w-full text-left">Rumusan Keputusan</h4>
+              <div class="relative h-44 w-full max-w-[200px]"><canvas id="hasil-chartPie"></canvas></div>
+              <div class="grid grid-cols-2 gap-2 mt-4 w-full text-center font-bold text-xs">
+                <div class="p-2 bg-emerald-50 text-emerald-700 rounded-lg">Meningkat<br><span id="hasil-percImp">0%</span></div>
+                <div class="p-2 bg-slate-50 text-slate-600 rounded-lg">Kekal / Turun<br><span id="hasil-percStag">0%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-4" id="hasil-actionWrapper">
+            <button id="hasil-submitBtn" onclick="hantarLaporanKeberhasilan()" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-indigo-700 flex items-center gap-1"><i class="ph-bold ph-paper-plane-right"></i> Hantar Laporan Keberhasilan</button>
+            <div id="hasil-postSubmit" class="hidden flex items-center gap-3">
+              <span class="text-xs font-bold text-emerald-700 bg-green-50 border border-green-200 px-4 py-2 rounded-xl">✅ Laporan Berjaya Direkodkan!</span>
+              <button id="hasil-openPdfBtn" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-1"><i class="ph-bold ph-file-pdf"></i> Buka PDF / Slide</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: PANGKALAN DATA & REVIEW STATUS (MODUL 4 + TRACKING) -->
+    <!-- ========================================================================= -->
+    <section id="content-semakan" class="tab-content animate-fadeIn hidden">
+      
+      <div class="flex gap-2 mb-4 border-b border-slate-200 pb-2">
+        <button onclick="switchSubTab('rekod')" id="subtab-rekod" class="px-4 py-1.5 text-xs font-bold rounded-full bg-slate-800 text-white">📂 Dokumen PILL</button>
+        <button onclick="switchSubTab('tracking')" id="subtab-tracking" class="px-4 py-1.5 text-xs font-bold rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300">📊 Status Muat Naik PBD</button>
+      </div>
+
+      <!-- VIEW A: REKOD DATA DOKUMEN PILL -->
+      <div id="subview-rekod" class="space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-wrap gap-4 items-end justify-between">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1 w-full sm:w-auto">
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-500 uppercase">Jenis</label>
+              <select id="semak-fType" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-1.5 px-3 rounded-lg text-xs outline-none"><option value="">Semua</option><option value="PILL">Perancangan</option><option value="KEBERHASILAN">Keberhasilan</option></select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-500 uppercase">Subjek</label>
+              <select id="semak-fSubject" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-1.5 px-3 rounded-lg text-xs outline-none"><option value="">Semua</option></select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-500 uppercase">Sesi</label>
+              <select id="semak-fSesi" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-1.5 px-3 rounded-lg text-xs outline-none"><option value="">Semua</option></select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-500 uppercase">Tahun</label>
+              <select id="semak-fYear" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-1.5 px-3 rounded-lg text-xs outline-none"><option value="">Semua</option></select>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="resetSemakFilters()" class="text-xs font-semibold px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 flex items-center gap-1"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
+            <button id="semak-btnAdmin" onclick="toggleAdminBoxVisibility()" class="text-xs font-semibold px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 flex items-center gap-1"><i class="ph ph-shield-check"></i> Admin</button>
+          </div>
+        </div>
+
+        <div id="semak-adminBox" class="hidden bg-indigo-50 border border-indigo-100 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
+          <div><h4 class="font-bold text-indigo-900 text-sm">Akses Kuasa Admin Pengurusan</h4><p class="text-xs text-indigo-700 mt-0.5">Sila masukkan kata laluan untuk mengaktifkan fungsi padam data pukal.</p></div>
+          <div class="flex gap-2 w-full sm:w-auto">
+            <input id="semak-adminPass" type="password" placeholder="Kata laluan..." class="px-3 py-2 border rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="prosesAdminLogin()" id="semak-btnAuth" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-all">Masuk</button>
+          </div>
+        </div>
+
+        <div id="semak-bulkBar" class="hidden bg-red-50 border border-red-100 p-3 rounded-xl flex justify-between items-center shadow-sm animate-fadeIn">
+          <span class="text-xs font-bold text-red-800 flex items-center gap-1"><i class="ph-bold ph-trash text-base"></i> <span id="semak-selectedCount">0</span> rekod dipilih</span>
+          <button onclick="laksanaPadamPukal()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Padam Terpilih</button>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-[300px] relative">
+          <div id="semak-emptyState" class="hidden p-12 text-center text-slate-400 absolute inset-0 flex flex-col items-center justify-center">
+            <i class="ph-fill ph-folder-open text-4xl mb-2 text-slate-300"></i><p class="text-xs font-bold">Tiada rekod PILL ditemui.</p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase font-bold">
+                  <th class="px-4 py-3 w-10 text-center hidden semak-admin-col bg-red-50/50"><input type="checkbox" id="semak-chkAll" class="custom-checkbox" onclick="toggleSemakSelectAll(this)"></th>
+                  <th class="px-4 py-3 w-12 text-center">#</th>
+                  <th class="px-4 py-3">Jenis Pelaporan</th>
+                  <th class="px-4 py-3">Mata Pelajaran</th>
+                  <th class="px-4 py-3">Sesi</th>
+                  <th class="px-4 py-3 text-center">Tahun</th>
+                  <th class="px-4 py-3 text-center">Tarikh Masa Hantar</th>
+                  <th class="px-4 py-3 text-center">Fail PDF / Slide</th>
+                  <th class="px-4 py-3 text-center hidden semak-admin-col w-20">Tindakan</th>
+                </tr>
+              </thead>
+              <tbody id="semak-tableBody" class="text-slate-700 text-xs divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW B: TRACKING STATUS MUAT NAIK PBD -->
+      <div id="subview-tracking" class="hidden space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">Status Pengisian Data Mentah Murid</h3>
+              <p class="text-xs text-slate-500 mt-0.5">Semakan audit masa nyata bagi mengesan kelas-kelas yang telah lengkap diisi gred TP/Peperiksaan.</p>
+            </div>
+            <span id="tracking-summaryBadge" class="bg-indigo-50 text-indigo-700 font-black text-xs px-3 py-1 rounded-full">Memproses...</span>
+          </div>
+          <div class="overflow-x-auto border rounded-xl custom-scroll max-h-[400px]">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-slate-50 sticky top-0 border-b shadow-sm text-slate-500 font-bold uppercase">
+                <tr><th class="px-4 py-3">Bil</th><th class="px-4 py-3">Nama Kelas</th><th class="px-4 py-3">Mata Pelajaran</th><th class="px-4 py-3 text-center">Bilangan Murid Terlibat</th><th class="px-4 py-3 text-center">Status Hub Database PBD</th></tr>
+              </thead>
+              <tbody id="tracking-tableBody" class="divide-y divide-slate-100 bg-white">
+                <tr><td colspan="5" class="text-center py-8 text-slate-400 italic">Sedang menyusun analisis penjejakan...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- Delete Single Confirmation Modal -->
+  <div id="semak-deleteModal" class="fixed inset-0 z-[110] hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border text-center">
+      <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ph-bold ph-warning text-xl"></i></div>
+      <h3 class="font-bold text-slate-900 text-lg mb-2">Sahkan Pemadaman</h3>
+      <p class="text-sm text-slate-500 mb-6">Adakah anda pasti ingin memadam rekod pelaporan yang dipilih secara kekal?</p>
+      <div class="flex gap-3 justify-center">
+        <button onclick="closeDeleteModal()" class="px-4 py-2 border rounded-lg text-xs font-bold text-slate-600 bg-white hover:bg-slate-50">Batal</button>
+        <button id="semak-btnConfirmDel" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold">Padam Kekal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PEMBENTANGAN SLAID (DARI HTML 1) -->
+  <div id="slideModal" class="fixed inset-0 z-[200] hidden bg-slate-900 flex flex-col text-white">
+    <div class="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800">
+      <h2 id="slideTitle" class="text-lg font-bold text-emerald-400">Pembentangan PILL</h2>
+      <button onclick="tutupLiveSlide()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-xs">Tutup Slaid (ESC)</button>
+    </div>
+    <div id="slideContent" class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-900 text-slate-100 flex flex-col w-full">
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="masterToast" class="fixed bottom-5 right-5 z-[150] flex flex-col gap-2"></div>
+
+  <!-- ========================================================================= -->
+  <!-- KOD JAVASCRIPT GABUNGAN PENUH -->
+  <!-- ========================================================================= -->
+  <script>
+    // --- INTEGRASI SATU ENDPOINT UTAMA (V3.0 BARU) ---
+    const GLOBAL_GAS_URL = "https://script.google.com/macros/s/AKfycbw5Cje0vPuwpHH24_L8wUo9HJImXA-JgrthNkwDF8ylw-_TquZH8H69PMGj_5xC9pTtcg/exec";
+
+    let databaseMentahPBD = [];
+    let databaseMentahUjian = [];
+    let senaraiRekodPILL = [];
+    let currentStep = 1;
+    let dataMuridRancangTP1 = [];
+    let dataMuridRancangTP2 = [];
+    let dataMuridHasilAsal = [];
+    let singleDeleteTargetId = null;
+    let isSekolahRendah = false;
+    let activeAdminKey = "";
+    let adminMode = false;
+    let adminPassword = "";
+    let pangkalanDraf = {};
+    
+    // PEMBAIKAN BUG: Isytihar graf di ruang global
+    let comparisonChartInstance = null;
+    let successChartInstance = null;
+    
+    // --- VARIABEL PAGINATION ---
+    let semakanCurrentPage = 1;
+    const semakanItemsPerPage = 10;
+    let semakanFilteredDataUtama = [];
+
+    // Init App
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById('rancang-year').value = new Date().getFullYear();
+        sedutDataUtamaDariPangkalan();
+    });
+
+    // Central Tab Controller 
+    function switchTab(tabId) {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => { c.classList.add("hidden"); c.classList.remove("block"); });
+        
+        document.getElementById(`tab-${tabId}`).classList.add("active");
+        const actSection = document.getElementById(`content-${tabId}`);
+        actSection.classList.remove("hidden");
+        actSection.classList.add("block");
+        
+        if (tabId === 'semakan') {
+            binaJadualSemakanUrusan();
+            binaJadualPenjejakanTracking();
+        }
+    }
+
+    function switchSubTab(subId) {
+        if (subId === 'rekod') {
+            document.getElementById('subtab-rekod').className = "px-4 py-1.5 text-xs font-bold rounded-full bg-slate-800 text-white";
+            document.getElementById('subtab-tracking').className = "px-4 py-1.5 text-xs font-bold rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300";
+            document.getElementById('subview-rekod').classList.remove('hidden');
+            document.getElementById('subview-tracking').classList.add('hidden');
+        } else {
+            document.getElementById('subtab-tracking').className = "px-4 py-1.5 text-xs font-bold rounded-full bg-slate-800 text-white";
+            document.getElementById('subtab-rekod').className = "px-4 py-1.5 text-xs font-bold rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300";
+            document.getElementById('subview-tracking').classList.remove('hidden');
+            document.getElementById('subview-rekod').classList.add('hidden');
+            binaJadualPenjejakanTracking();
+        }
+    }
+
+    // Loader Controller dengan Enjin Peratusan Baru
+    let loadingIntervalMaster;
+    let loadingProgressMaster = 0;
+
+    function toggleLoader(show, title = "Memproses Data", subtitle = "Sila tunggu sebentar...") {
+        const load = document.getElementById("master-loading");
+        const bar = document.getElementById("master-loading-bar");
+        const perc = document.getElementById("master-loading-perc");
+        
+        const titleEl = document.getElementById("loading-title");
+        const subtitleEl = document.getElementById("loading-subtitle");
+        if(titleEl) titleEl.innerText = title;
+        if(subtitleEl) subtitleEl.innerHTML = subtitle; 
+        
+        if (show) {
+            if(load) load.classList.remove("hidden");
+            loadingProgressMaster = 0;
+            if(bar) bar.style.width = '0%';
+            if(perc) perc.innerText = '0%';
+            
+            clearInterval(loadingIntervalMaster);
+            loadingIntervalMaster = setInterval(() => {
+                loadingProgressMaster += Math.random() * 1.5;
+                if (loadingProgressMaster > 98) loadingProgressMaster = 98; 
+                if (bar) bar.style.width = `${loadingProgressMaster}%`;
+                if (perc) perc.innerText = `${Math.round(loadingProgressMaster)}%`;
+            }, 250);
+        } else {
+            clearInterval(loadingIntervalMaster);
+            if (bar) bar.style.width = '100%';
+            if (perc) perc.innerText = '100%';
+            
+            setTimeout(() => {
+                if(load) load.classList.add("hidden");
+            }, 400);
+        }
+    }
+
+    function paparToast(msg, type = "success") {
+        const container = document.getElementById("masterToast");
+        const div = document.createElement("div");
+        div.className = `px-4 py-3 rounded-xl shadow-lg text-white text-xs font-bold flex items-center gap-2 animate-fadeIn ${type === 'error' ? 'bg-red-600' : 'bg-slate-800'}`;
+        div.innerHTML = type === 'error' ? `<i class="ph-bold ph-warning-circle text-base"></i> ${msg}` : `<i class="ph-bold ph-check-circle text-base"></i> ${msg}`;
+        container.appendChild(div);
+        setTimeout(() => div.remove(), 3500);
+    }
+
+    // Master Fetch Data Latar Belakang (Dengan Lazy Load & Abort Controller)
+    async function sedutDataUtamaDariPangkalan() {
+        const elSub = document.getElementById('rancang-subject');
+        const elSubHasil = document.getElementById('hasil-subject');
+        
+        if (elSub) { elSub.innerHTML = '<option value="">Pilih Mata Pelajaran...</option>'; elSub.disabled = true; }
+        if (elSubHasil) { elSubHasil.innerHTML = '<option value="">Pilih Mata Pelajaran...</option>'; elSubHasil.disabled = true; }
+        
+        toggleLoader(true, "Menghidupkan Sistem", "Menyambung ke Pangkalan Data Google... <br><span class='text-[10px] text-indigo-500 font-bold'>(Anggaran masa: 10 - 15 saat)</span>");
+        
+        let masaKiraan = 0;
+        const pemantauMasa = setInterval(() => {
+            masaKiraan++;
+            const teksInfo = document.getElementById("loading-subtitle");
+            if (teksInfo) {
+                if (masaKiraan === 3) teksInfo.innerHTML = "Memuat turun rekod PBD sekolah... <br><span class='text-[11px] text-red-600 font-black mt-2 inline-block bg-red-50 px-2 py-1 border border-red-200 rounded'>🛑 JANGAN REFRESH HALAMAN INI</span>";
+                else if (masaKiraan === 8) teksInfo.innerHTML = "Sistem sedang mengunci pangkalan data... <br><span class='text-[11px] text-red-600 font-black mt-2 inline-block bg-red-50 px-2 py-1 border border-red-200 rounded'>🛑 JANGAN REFRESH HALAMAN INI</span>";
+                else if (masaKiraan === 15) teksInfo.innerHTML = "Menyusun ribuan data murid... <br><span class='text-[10px] text-indigo-600 font-bold'>Hampir siap. Terima kasih kerana sabar menunggu.</span>";
+                else if (masaKiraan > 25 && masaKiraan % 5 === 0) teksInfo.innerHTML = "Masih memproses (" + masaKiraan + " saat)... <br><span class='text-[10px] text-amber-600 font-bold'>Data sekolah sangat besar. Sistem tidak 'hang'.</span>";
+            }
+        }, 1000);
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 saat limit
+
+            let resData;
+            let percubaan = 0;
+            const maks_percubaan = 2;
+
+            while (percubaan < maks_percubaan) {
+                try {
+                    resData = await fetch(GLOBAL_GAS_URL, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                        body: JSON.stringify({ action: "getData" }),
+                        redirect: "follow",
+                        signal: controller.signal
+                    });
+                    if (resData.ok) break; 
+                } catch (err) {
+                    if (percubaan === maks_percubaan - 1) throw err; 
+                }
+                percubaan++;
+                if (percubaan < maks_percubaan) {
+                    const teksInfo = document.getElementById("loading-subtitle");
+                    if (teksInfo) teksInfo.innerHTML = "Capaian terputus sementara. Mencuba semula (Auto-Retry sebenar)... <br><span class='text-[10px] text-red-500 font-bold'>Menyambung kembali ke pelayan Google.</span>";
+                    await new Promise(resolve => setTimeout(resolve, 2000)); 
+                }
+            }
+            
+            clearTimeout(timeoutId);
+            clearInterval(pemantauMasa);
+
+            if (resData.ok) {
+                document.getElementById("loading-subtitle").innerHTML = "Data berjaya dimuat turun! Menyusun paparan terakhir...";
+                const json = await resData.json();
+                
+                window.senaraiSubjekLazy = json.subjekDitawarkan || [];
+                databaseMentahPBD = json.pbd || []; // Fallback if backend still sends it
+                databaseMentahUjian = json.ujian || []; 
+                pangkalanDraf = json.draf || {};
+                window.senaraiGuruUtama = json.guru || [];
+                senaraiRekodPILL = json.pill || [];
+                
+                isSekolahRendah = json.jenisSekolah === "Sekolah Rendah";
+                
+                if (elSub) elSub.disabled = false;
+                if (elSubHasil) elSubHasil.disabled = false;
+                
+                binaDropdownMataPelajaranUtama();
+                if (document.getElementById('tab-semakan').classList.contains('active')) {
+                    binaJadualSemakanUrusan();
+                    binaJadualPenjejakanTracking();
+                }
+            }
+        } catch (e) {
+            clearInterval(pemantauMasa);
+            console.error(e); 
+            if (e.name === 'AbortError') {
+                paparToast("Ralat: Masa tamat (Timeout). Pangkalan data terlalu besar atau capaian internet perlahan.", "error");
+            } else {
+                paparToast("Gagal memuat turun data. Sila refresh semula laman web.", "error");
+            }
+        } finally {
+            toggleLoader(false);
+        }
+    }
+
+    let tomRancang, tomHasil;
+    function binaDropdownMataPelajaranUtama() {
+        const uniqueSubjek = window.senaraiSubjekLazy.sort();
+        const fillSelect = (id) => {
+            const el = document.getElementById(id);
+            el.innerHTML = '<option value="">Pilih Mata Pelajaran</option>';
+            uniqueSubjek.forEach(s => {
+                const opt = document.createElement('option'); opt.value = s; opt.textContent = s; el.appendChild(opt);
+            });
+        };
+        
+        if (tomRancang) { tomRancang.destroy(); }
+        if (tomHasil) { tomHasil.destroy(); }
+
+        fillSelect('rancang-subject');
+        fillSelect('hasil-subject');
+        
+        tomRancang = new TomSelect('#rancang-subject', { 
+            allowEmptyOption: true, 
+            placeholder: 'Cari subjek...',
+            onChange: function(val) { if(val) tarikDataMuridRancang(); }
+        });
+        tomHasil = new TomSelect('#hasil-subject', { 
+            allowEmptyOption: true, 
+            placeholder: 'Cari subjek...',
+            onChange: function(val) { if(val) tarikDataMuridHasil(); }
+        });
+    }
+
+    function toTitleCase(str) {
+        if (!str) return '';
+        return String(str).toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+
+    // =========================================================================
+    // MODUL SLAID PEMBENTANGAN (DARI HTML 1) 
+    // Disesuaikan dengan data baru HTML 2
+    // =========================================================================
+    let currentSlideIndex = 0;
+
+    function tunjukSlaid(index) {
+      const slides = document.querySelectorAll('.pill-slide');
+      if(slides.length === 0) return;
+      
+      if(index < 0) index = slides.length - 1; 
+      if(index >= slides.length) index = 0;    
+      currentSlideIndex = index;
+
+      slides.forEach((s, i) => {
+        s.style.display = (i === index) ? 'flex' : 'none';
+      });
+
+      const counter = document.getElementById('slideCount');
+      if(counter) counter.innerText = `${index + 1} / ${slides.length}`;
+    }
+
+    function nextSlide() { tunjukSlaid(currentSlideIndex + 1); }
+    function prevSlide() { tunjukSlaid(currentSlideIndex - 1); }
+
+    function toggleFullScreen() {
+        alert("MAKLUMAN SISTEM:\n\nFungsi 'Full Screen' automatik disekat oleh pelayan Google atas faktor keselamatan.\n\nSILA TEKAN BUTANG [F11] PADA PAPAN KEKUNCI ANDA SEKARANG untuk masuk atau keluar dari mod skrin penuh.");
+    }
+
+    function bukaLiveSlide(index) {
+      const data = semakanFilteredDataUtama[index].fullData;
+      if(!data) return paparToast("Tiada data terperinci untuk slaid ini.", "error");
+
+      const ts = new Date(semakanFilteredDataUtama[index].timestamp).toLocaleDateString("ms-MY");
+      document.getElementById('slideTitle').innerText = `Laporan & Pembentangan: ${data.subject}`;
+
+      const isTH1 = txt => String(txt || "").includes("[Tunas Harapan 1]");
+      const isTH2 = txt => String(txt || "").includes("[Tunas Harapan 2]");
+
+      const plan = data.actionPlans || [];
+      const quadTH1 = { tl:[], tr:[], bl:[], br:[] };
+      const quadTH2 = { tl:[], tr:[], bl:[], br:[] };
+
+      const keut = data.priorities || [];
+      keut.forEach(k => {
+          let target = isTH1(k.keterangan) ? quadTH1 : quadTH2;
+          let prog = k.intervensi;
+          let justifikasi = k.keterangan.includes("Justifikasi: ") ? k.keterangan.split("Justifikasi: ")[1] : "";
+          let itemRender = `<div class="font-bold text-slate-700">${prog}</div><div class="text-[10px] text-slate-500 font-normal whitespace-normal mt-1 leading-snug">${justifikasi}</div>`;
+          
+          if(k.keterangan.includes("[Pilih & Laksana]")) target.tl.push(itemRender);
+          else if(k.keterangan.includes("[Teliti Semula]")) target.tr.push(itemRender);
+          else if(k.keterangan.includes("[Boleh Dipertimbangkan]")) target.bl.push(itemRender);
+          else if(k.keterangan.includes("[Perlu Elakkan]")) target.br.push(itemRender);
+      });
+
+      const slideClass = "pill-slide w-full max-w-5xl aspect-[16/9] bg-white text-slate-800 rounded-2xl shadow-xl flex flex-col border border-indigo-100 relative shrink-0 p-6 md:p-10 print-card mx-auto overflow-hidden";
+      const slideHeader = (title) => `<div class="border-b-2 border-indigo-100 pb-3 mb-4 shrink-0"><h2 class="text-2xl font-bold text-indigo-700 tracking-tight">${title}</h2></div>`;
+
+      let html = `
+     <div class="w-full flex flex-col sm:flex-row justify-between items-center mb-6 max-w-5xl mx-auto gap-4">
+        <div class="flex gap-2">
+            <button onclick="cetakSlaid()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-sm"><i class="ph-bold ph-printer"></i> Cetak PDF</button>
+            <button onclick="toggleFullScreen()" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-sm"><i class="ph-bold ph-corners-out"></i> Mod Bentang</button>
+        </div>
+        <div class="flex items-center gap-3 bg-white p-1.5 rounded-lg border border-indigo-200 shadow-sm">
+          <button onclick="prevSlide()" class="p-2 hover:bg-indigo-50 text-indigo-600 rounded transition-colors" title="Kembali (Arrow Left)"><i class="ph-bold ph-caret-left text-xl"></i></button>
+          <span id="slideCount" class="text-indigo-800 font-bold text-sm min-w-[60px] text-center">1 / 1</span>
+          <button onclick="nextSlide()" class="p-2 hover:bg-indigo-50 text-indigo-600 rounded transition-colors" title="Seterusnya (Arrow Right)"><i class="ph-bold ph-caret-right text-xl"></i></button>
+        </div>
+      </div>
+      <div class="relative w-full pb-12 flex flex-col gap-8" id="slidePrintArea">`;
+
+      // KAD SLAID 1: MUKA DEPAN
+      html += `
+      <div class="${slideClass.replace('bg-white', 'bg-indigo-600').replace('text-slate-800', 'text-white').replace('border-indigo-100', 'border-indigo-700')}">
+        <div class="absolute top-10 left-10 text-indigo-200 font-bold tracking-widest text-sm uppercase">Laporan PILL</div>
+        <div class="flex-1 flex flex-col items-center justify-center text-center">
+            <h1 class="text-5xl font-black text-white mb-6 leading-tight">${data.subject}</h1>
+            <p class="text-2xl text-indigo-200 mb-8 font-medium">Sesi ${data.sesi} ${data.year}</p>
+            <div class="mt-8 bg-indigo-700/50 border border-indigo-500 px-6 py-2 rounded-full text-sm font-medium text-indigo-100 backdrop-blur-sm">Tarikh Rekod: ${ts}</div>
+        </div>
+      </div>`;
+
+      // KAD SLAID 2: PUNCA MASALAH
+      if(data.problems && data.problems.length) {
+        html += `<div class="${slideClass}">${slideHeader("Langkah 2: Analisis Punca Masalah (Root Cause)")}
+        <div class="flex-1 flex flex-col gap-3 overflow-y-auto custom-scroll justify-center">
+            ${data.problems.map((p,i) => `
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-2 shadow-sm shrink-0">
+                <div class="flex items-center gap-3"><span class="w-7 h-7 rounded-full bg-red-100 text-red-600 font-bold flex items-center justify-center shrink-0">${i+1}</span><h4 class="font-bold text-red-700 text-base">Root Cause: ${p.rootCause}</h4></div>
+                <div class="pl-10 text-xs text-slate-600 flex flex-wrap gap-2"><span class="bg-white px-3 py-1.5 rounded border shadow-sm"><b>Z1:</b> ${p.zoom1}</span><span class="bg-white px-3 py-1.5 rounded border shadow-sm"><b>Z2:</b> ${p.zoom2}</span></div>
+            </div>`).join("")}
+        </div></div>`;
+      }
+
+      // KAD SLAID 3: INTERVENSI KESELURUHAN
+      if(data.interventions && data.interventions.length) {
+        html += `<div class="${slideClass}">${slideHeader("Langkah 3: Pemetaan Cadangan Intervensi")}
+        <div class="flex-1 flex flex-col justify-center items-center overflow-hidden">
+            <div class="w-full bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-6 shadow-sm">
+                <h4 class="font-black text-indigo-800 mb-5 text-lg text-center uppercase tracking-widest"><i class="ph-bold ph-lightbulb"></i> Senarai Intervensi Dicadangkan</h4>
+                <div class="flex flex-wrap justify-center gap-3">
+                    ${data.interventions.map(txt => `<span class="px-4 py-2 bg-white border-2 border-indigo-300 text-indigo-900 rounded-xl text-base font-bold shadow-sm">${txt}</span>`).join("")}
+                </div>
+            </div>
+        </div></div>`;
+      }
+
+      // KAD SLAID 4: QUADRANT MATRIKS KEUTAMAAN
+      const buildQuadrant = (quad, title) => {
+          const renderList = (arr) => arr.length ? arr.map(x => `<div class="bg-slate-50 border rounded p-2 text-xs mb-1.5 shadow-sm">${x}</div>`).join('') : '<div class="text-[10px] text-slate-400 italic text-center mt-2">Tiada Program</div>';
+          return `<div class="${slideClass}">${slideHeader(`Langkah 4: Matriks Keutamaan (${title})`)}
+            <div class="flex-1 flex flex-col items-center justify-center p-1 h-full overflow-hidden">
+                <div class="grid grid-cols-2 gap-3 w-full h-full max-w-4xl relative">
+                    <div class="border-[3px] border-green-400 bg-white rounded-xl p-3 flex flex-col shadow-sm overflow-hidden">
+                        <div class="text-green-600 text-xs text-center font-black uppercase mb-2 bg-green-50 py-1 rounded shrink-0">🟩 Pilih dan Laksana</div>
+                        <div class="flex-1 overflow-y-auto custom-scroll pr-1">${renderList(quad.tl)}</div>
+                    </div>
+                    <div class="border-[3px] border-red-400 bg-white rounded-xl p-3 flex flex-col shadow-sm overflow-hidden">
+                        <div class="text-red-600 text-xs text-center font-black uppercase mb-2 bg-red-50 py-1 rounded shrink-0">🟥 Teliti Semula</div>
+                        <div class="flex-1 overflow-y-auto custom-scroll pr-1">${renderList(quad.tr)}</div>
+                    </div>
+                    <div class="border-[3px] border-orange-400 bg-white rounded-xl p-3 flex flex-col shadow-sm overflow-hidden">
+                        <div class="text-orange-600 text-xs text-center font-black uppercase mb-2 bg-orange-50 py-1 rounded shrink-0">🟧 Boleh Dipertimbangkan</div>
+                        <div class="flex-1 overflow-y-auto custom-scroll pr-1">${renderList(quad.bl)}</div>
+                    </div>
+                    <div class="border-[3px] border-yellow-400 bg-white rounded-xl p-3 flex flex-col shadow-sm overflow-hidden">
+                        <div class="text-yellow-600 text-xs text-center font-black uppercase mb-2 bg-yellow-50 py-1 rounded shrink-0">🟨 Perlu Elakkan</div>
+                        <div class="flex-1 overflow-y-auto custom-scroll pr-1">${renderList(quad.br)}</div>
+                    </div>
+                </div>
+            </div>
+          </div>`;
+      };
+      if(quadTH1.tl.length || quadTH1.tr.length || quadTH1.bl.length || quadTH1.br.length) html += buildQuadrant(quadTH1, "Tunas Harapan 1");
+      if(quadTH2.tl.length || quadTH2.tr.length || quadTH2.bl.length || quadTH2.br.length) html += buildQuadrant(quadTH2, "Tunas Harapan 2");
+
+      // KAD SLAID 5: ACTION PLANS (1 CP = 1 SLAID)
+      const buildPlanSlides = (plans, kumpulan) => {
+          let out = '';
+          // Buang had ketinggian (aspect ratio & overflow) supaya kotak memanjang ke bawah
+          const step5SlideClass = slideClass.replace('aspect-[16/9]', 'min-h-[500px]').replace('overflow-hidden', 'overflow-visible');
+          
+          plans.forEach((p) => {
+              const cpList = [
+                  p.cp1 || { date: p.tempoh, isi: p.ket, guru: p.pelaksana },
+                  p.cp2 || { date: '', isi: '', guru: '' },
+                  p.cp3 || { date: '', isi: '', guru: '' }
+              ];
+
+              cpList.forEach((cp, i) => {
+                  if(!cp.date && !cp.isi && !cp.guru) return;
+
+                  out += `<div class="${step5SlideClass}">${slideHeader(`Langkah 5: Pelan Tindakan - ${kumpulan}`)}
+                      <div class="flex-1 flex flex-col h-auto">
+                          <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-5 shadow-sm shrink-0">
+                              <h3 class="text-xl font-black text-indigo-900 uppercase">${p.program}</h3>
+                              <div class="flex flex-wrap gap-3 mt-3">
+                                  ${p.sasaranObjektif ? `<span class="bg-white border px-4 py-1.5 rounded-lg text-sm font-bold text-indigo-700">Fokus: ${p.sasaranObjektif}</span>` : ''}
+                                  ${p.sasaranSkor ? `<span class="bg-white border px-4 py-1.5 rounded-lg text-sm font-bold text-indigo-700">KPI: ${p.sasaranSkor}</span>` : ''}
+                              </div>
+                          </div>
+
+                          <div class="border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col flex-1 h-auto">
+                              <div class="bg-slate-100 border-b border-slate-200 px-4 py-3 text-center font-black text-slate-700 text-base shrink-0">Butiran Check Point ${i+1}</div>
+                              <div class="p-6 flex-1 flex flex-col gap-5 text-base h-auto">
+                                  <div class="flex flex-col sm:flex-row gap-5 shrink-0">
+                                      <div class="flex-1"><span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Tarikh / Tempoh</span><div class="font-bold text-slate-800 bg-slate-50 border px-4 py-3 rounded-xl">${cp.date || '-'}</div></div>
+                                      <div class="flex-1"><span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Pelaksana</span><div class="font-black text-indigo-800 bg-indigo-50 border border-indigo-100 px-4 py-3 rounded-xl">${cp.guru || '-'}</div></div>
+                                  </div>
+                                  <div class="flex-1 flex flex-col h-auto"><span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Pengisian Terperinci (Proses & CP)</span><div class="text-slate-700 whitespace-pre-wrap leading-relaxed text-base bg-slate-50 p-6 rounded-xl border h-auto">${cp.isi || '-'}</div></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>`;
+              });
+          });
+          return out;
+      };
+
+      const plans1 = plan.filter(o => isTH1(o.keterangan));
+      const plans2 = plan.filter(o => isTH2(o.keterangan));
+      if(plans1.length) html += buildPlanSlides(plans1, "Tunas Harapan 1");
+      if(plans2.length) html += buildPlanSlides(plans2, "Tunas Harapan 2");
+      
+      html += `</div>`;
+      document.getElementById('slideContent').innerHTML = html;
+      document.getElementById('slideModal').classList.remove('hidden');
+      tunjukSlaid(0);
+    }
+
+    function cetakSlaid() {
+        const slideHTML = document.getElementById('slidePrintArea').innerHTML;
+        const printWindow = window.open('', '_blank');
+        
+        if (!printWindow) {
+            paparToast("Pop-up disekat. Sila 'Allow Pop-ups' pada browser anda.", "error");
+            return;
+        }
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="ms">
+            <head>
+                <title>Cetak Laporan PILL</title>
+                <script src="https://cdn.tailwindcss.com"><` + `/script>
+                <style>
+                    @page { size: A4 landscape; margin: 0 !important; }
+                    @media print {
+                        html, body { 
+                            margin: 0 !important; 
+                            padding: 0 !important; 
+                            background-color: white !important; 
+                            -webkit-print-color-adjust: exact !important; 
+                            print-color-adjust: exact !important; 
+                            width: 100% !important;
+                        }
+                        /* TAMBAH DISPLAY FLEX UNTUK BATALKAN ARAHAN SEMBUNYI SLAID */
+                        .pill-slide { 
+                            display: flex !important;
+                            flex-direction: column !important;
+                            page-break-after: always !important; 
+                            page-break-inside: avoid !important; 
+                            width: 100vw !important; 
+                            max-width: 100vw !important; 
+                            min-height: 100vh !important; 
+                            height: auto !important; 
+                            padding: 10mm !important; 
+                            margin: 0 !important; 
+                            border: none !important; 
+                            box-shadow: none !important; 
+                            border-radius: 0 !important; 
+                        }
+                    }
+                    
+                    body { background-color: #3f3f46; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+                    .pill-slide { 
+                        display: flex !important;
+                        flex-direction: column !important;
+                        width: 297mm !important; 
+                        max-width: 297mm !important;
+                        min-height: 210mm !important; 
+                        background: white; 
+                        margin: 0 auto 20px auto; 
+                        padding: 12mm; 
+                        box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+                    }
+                </style>
+            </head>
+            <body>
+                ${slideHTML}
+                <script>
+                    window.onload = function() {
+                        setTimeout(() => { window.print(); }, 1200); 
+                    };
+                <` + `/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+
+    function tutupLiveSlide() { 
+        document.getElementById('slideModal').classList.add('hidden'); 
+        if (document.fullscreenElement) document.exitFullscreen();
+    }
+    
+    document.addEventListener('keydown', function(e) { 
+        const isModalOpen = !document.getElementById('slideModal').classList.contains('hidden');
+        if (!isModalOpen) return;
+        
+        if(e.key === 'Escape') tutupLiveSlide(); 
+        if(e.key === 'ArrowRight') nextSlide();
+        if(e.key === 'ArrowLeft') prevSlide();
+    });
+
+    // =========================================================================
+    // LOGIK MODUL 3: JADUAL WIZARD BORANG PERANCANGAN
+    // =========================================================================
+    function navigateWizard(dir) {
+        if (dir === 1 && !sahkanLangkahWizardSemasa()) return;
+        
+        document.getElementById(`rancang-wizard-${currentStep}`).classList.replace('block', 'hidden');
+        currentStep += dir;
+        document.getElementById(`rancang-wizard-${currentStep}`).classList.replace('hidden', 'block');
+        
+        for(let i=1; i<=5; i++) {
+            const dot = document.getElementById(`step-dot-${i}`);
+            const line = document.getElementById(`step-line-${i}`);
+            if (i <= currentStep) {
+                dot.className = "w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 border-indigo-600 bg-indigo-600 text-white z-10 scale-110 shadow-md";
+                if(line && currentStep > i) line.className = "flex-1 h-1 bg-indigo-600 mx-2 rounded";
+            } else {
+                dot.className = "w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-white text-slate-400 z-10";
+                if(line) line.className = "flex-1 h-1 bg-slate-200 mx-2 rounded";
+            }
+        }
+
+        document.getElementById('rancang-stepLabel').innerText = stepTitles[currentStep-1];
+        document.getElementById('rancang-prevBtn').classList.toggle('hidden', currentStep === 1);
+        document.getElementById('rancang-nextBtn').classList.toggle('hidden', currentStep === 5);
+        document.getElementById('rancang-submitBtn').classList.toggle('hidden', currentStep !== 5);
+
+        if (dir === 1) {
+            if (currentStep === 3 && document.getElementById('rancang-interventionsContainer').innerHTML === '') binaAntaramukaLangkah3Intervensi();
+            if (currentStep === 4 && document.getElementById('rancang-priorityTH1').innerHTML === '') binaAntaramukaLangkah4Keutamaan();
+            if (currentStep === 5 && document.getElementById('rancang-planTH1').innerHTML === '') binaAntaramukaLangkah5PelanTindakan();
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function sahkanLangkahWizardSemasa() {
+        if (currentStep === 1) {
+            const sub = document.getElementById('rancang-subject').value;
+            const y = document.getElementById('rancang-year').value;
+            const s = document.getElementById('rancang-sesi').value;
+            if (!sub || !y || !s) { paparMsgRancang("Sila lengkapkan subjek, sesi, dan tahun.", true); return false; }
+            if (dataMuridRancangTP1.length === 0 && dataMuridRancangTP2.length === 0) { paparMsgRancang("Data murid kosong. Pastikan ada murid TP1/TP2 bagi subjek ini.", true); return false; }
+        } else if (currentStep === 2) {
+            const roots = document.querySelectorAll('[name="problemRootCause"]');
+            let filled = 0; roots.forEach(i => { if(i.value.trim()) filled++; });
+            if (filled === 0) { paparMsgRancang("Sila masukkan sekurang-kurangnya satu Root Cause utama.", true); return false; }
+        } else if (currentStep === 3) {
+            const inputs = document.querySelectorAll('#rancang-interventionsContainer input[type="text"]');
+            let filled = 0; inputs.forEach(i => { if(i.value.trim()) filled++; });
+            if (filled < 3) { paparMsgRancang("Sila masukkan sekurang-kurangnya 3 Cadangan Intervensi.", true); return false; }
+        } else if (currentStep === 4) {
+            const chk1 = document.querySelectorAll('#rancang-priorityTH1 input[type="checkbox"]:checked').length;
+            const chk2 = document.querySelectorAll('#rancang-priorityTH2 input[type="checkbox"]:checked').length;
+            
+            // Buang ayat "4" supaya guru tak keliru. Hanya minta tick sekurang-kurangnya 1.
+            if(chk1 === 0 || chk2 === 0) { paparMsgRancang("Sila TANDA (Tick) sekurang-kurangnya 1 keutamaan program bagi setiap kumpulan.", true); return false; }
+            
+            let semuaLengkap = true;
+            let firstEmpty = null;
+            
+            // Bersihkan border merah yang lama jika ada
+            document.querySelectorAll('#rancang-priorityTH1 .border-red-500, #rancang-priorityTH2 .border-red-500').forEach(el => {
+                el.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
+            });
+
+            document.querySelectorAll('#rancang-priorityTH1, #rancang-priorityTH2').forEach(container => {
+                container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                    const parentDiv = cb.closest('div');
+                    const sel = parentDiv.querySelector('select');
+                    const txt = parentDiv.querySelector('textarea');
+                    
+                    if(!sel.value || !txt.value.trim()) {
+                        semuaLengkap = false;
+                        
+                        // Warnakan kotak yang cikgu lupa isi dengan warna MERAH
+                        if(!sel.value) sel.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        if(!txt.value.trim()) txt.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                        
+                        // Simpan kedudukan kotak kosong untuk fungsi auto-scroll
+                        if(!firstEmpty) firstEmpty = !sel.value ? sel : txt;
+                    }
+                });
+            });
+            
+            if(!semuaLengkap) { 
+                paparMsgRancang("Cikgu ada tertinggal maklumat! Sila lengkapkan Kuadran Matriks & Huraian pada petak yang berwarna MERAH.", true); 
+                
+                // Tatal (scroll) terus ke tempat yang cikgu tertinggal
+                if(firstEmpty) {
+                    firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstEmpty.focus();
+                }
+                return false; 
+            }
+        }
+        paparMsgRancang("", false);
+        return true;
+    }
+
+    function paparMsgRancang(txt, isErr) {
+        const el = document.getElementById('rancang-alertMsg');
+        el.innerText = txt;
+        if(txt) el.classList.remove('hidden'); else el.classList.add('hidden');
+        el.className = `mt-3 text-center text-xs font-bold ${isErr ? 'text-red-600 bg-red-50 p-2 rounded-lg border' : 'text-green-600 bg-green-50 p-2 rounded-lg border'}`;
+    }
+
+    async function tarikDataMuridRancang() {
+        const sub = document.getElementById('rancang-subject').value;
+        if (!sub) return;
+        
+        toggleLoader(true, "Menarik Data Kelas", `Sistem sedang memuat turun rekod murid bagi subjek ${sub}...`);
+        
+        try {
+            const res = await fetch(GLOBAL_GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "get_murid_subjek", subject: sub }),
+                redirect: "follow"
+            });
+            const json = await res.json();
+            const filtered = json.dataMurid || [];
+            
+            dataMuridRancangTP1 = filtered.filter(r => String(r['TAHAP PENGUASAAN']).trim() === '1').map(r => ({ nama: r['NAMA'], kelas: r['KELAS'], tp: '1' }));
+            dataMuridRancangTP2 = filtered.filter(r => String(r['TAHAP PENGUASAAN']).trim() === '2').map(r => ({ nama: r['NAMA'], kelas: r['KELAS'], tp: '2' }));
+            
+            document.getElementById('rancang-countTH1').innerText = dataMuridRancangTP1.length;
+            document.getElementById('rancang-countTH2').innerText = dataMuridRancangTP2.length;
+            
+            let html = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-xs">';
+            const tableHTML = (title, list) => `
+                <div class="border rounded-xl bg-white overflow-hidden shadow-sm">
+                    <div class="bg-slate-50 px-3 py-2 border-b font-bold text-slate-700">${title} (${list.length} Murid)</div>
+                    <div class="max-h-40 overflow-y-auto divide-y">
+                        ${list.map((m,i) => `<div class="px-3 py-1.5 flex justify-between"><span>${i+1}. ${toTitleCase(m.nama)}</span><span class="text-slate-400">${m.kelas}</span></div>`).join('')}
+                    </div>
+                </div>`;
+            html += tableHTML("Senarai Murid TP1", dataMuridRancangTP1);
+            html += tableHTML("Senarai Murid TP2", dataMuridRancangTP2);
+            html += '</div>';
+            document.getElementById('rancang-previewContainer').innerHTML = html;
+            
+            if(dataMuridRancangTP1.length === 0 && dataMuridRancangTP2.length === 0) paparToast("Tiada murid sasaran dikesan bagi subjek ini.", "error");
+            else {
+                paparToast("Berjaya memuat turun senarai murid intervensi!", "success");
+                if (typeof semakDanMuatDraf === "function") setTimeout(semakDanMuatDraf, 500);
+            }
+        } catch (err) {
+            paparToast("Gagal menarik data murid. Sila cuba lagi.", "error");
+        } finally {
+            toggleLoader(false);
+        }
+    }
+
+    let problemRowIndex = 0;
+    function addProblemRow() {
+        problemRowIndex++;
+        const div = document.createElement('div');
+        div.id = `pm-row-${problemRowIndex}`;
+        div.className = "relative p-5 border rounded-xl bg-slate-50 flex flex-col gap-4 animate-fadeIn group";
+        div.innerHTML = `
+            <button type="button" onclick="document.getElementById('pm-row-${problemRowIndex}').remove()" class="absolute top-3 right-3 text-slate-400 hover:text-red-500 bg-white p-1 rounded-full shadow-sm"><i class="ph-bold ph-x text-base"></i></button>
+            <div class="w-full space-y-3">
+                <div><label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Zoom 1 (Simptom Permukaan) | Why</label><input type="text" name="problemZoom1" class="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-xs bg-white outline-none focus:border-indigo-400" placeholder="Contoh: Murid mendapat skor rendah (0-15m) pada Kertas 1"></div>
+                <div><label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Zoom 2 (Penyebab) | Why</label><input type="text" name="problemZoom2" class="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-xs bg-white outline-none focus:border-indigo-400" placeholder="Contoh: Murid tidak dapat mentafsir dan mengenal pasti stimulus"></div>
+                <div class="bg-red-50/50 p-3 rounded-xl border border-red-100"><label class="block text-[10px] font-bold text-red-600 uppercase mb-1">Punca Sebenar Masalah</label><input type="text" name="problemRootCause" class="w-full px-4 py-2.5 border border-red-300 rounded-lg text-xs bg-white outline-none font-bold focus:border-red-500 focus:ring-1 focus:ring-red-500" placeholder="Contoh: Murid tidak dapat membina ayat huraian kerana tidak memahami stimulus..." required></div>
+            </div>`;
+        document.getElementById('rancang-problemsContainer').appendChild(div);
+    }
+
+    let intervensiIndex = 0;
+    function binaAntaramukaLangkah3Intervensi() {
+        const c = document.getElementById('rancang-interventionsContainer'); c.innerHTML = '';
+        
+        let mindmapHTML = `
+        <div id="mindmap-preview" class="mb-8 p-6 bg-slate-50 border border-slate-200 rounded-2xl hidden">
+            <h4 class="text-center font-bold text-slate-700 text-sm mb-6 uppercase tracking-wider flex items-center justify-center gap-2"><i class="ph-bold ph-git-branch"></i> Preview Pemetaan Intervensi</h4>
+            <div id="mindmap-content" class="space-y-10"></div>
+        </div>`;
+        c.innerHTML = mindmapHTML + `<div id="input-cadangan-container" class="space-y-4"></div>`;
+        const inputContainer = document.getElementById('input-cadangan-container');
+
+        document.querySelectorAll('#rancang-problemsContainer > div').forEach((el, idx) => {
+            const rc = el.querySelector('[name="problemRootCause"]').value.trim();
+            if(!rc) return;
+            const pid = el.id;
+            const block = document.createElement('div');
+            block.className = "border rounded-xl bg-white shadow-sm overflow-hidden";
+            block.innerHTML = `
+                <div class="bg-indigo-50/60 px-4 py-2 border-b font-bold text-indigo-900 text-xs flex items-center gap-1"><i class="ph-fill ph-target"></i> Root Cause: ${rc}</div>
+                <div class="p-4 space-y-2">
+                    <div id="box-list-${pid}" class="space-y-2"></div>
+                    <button type="button" onclick="tambahInputIntervensiSpesifik('${pid}','${rc.replace(/'/g, "\\'")}')" class="text-xs font-bold text-indigo-600 flex items-center gap-0.5 mt-2"><i class="ph-bold ph-plus-circle"></i> Tambah Cadangan</button>
+                </div>`;
+            inputContainer.appendChild(block);
+            
+            let adaDraf = false;
+            if(window.drafIntervensi) {
+                window.drafIntervensi.forEach(d => {
+                    if(d.root === rc) {
+                        tambahInputIntervensiSpesifik(pid, rc);
+                        document.querySelector(`#box-list-${pid} > div:last-child input`).value = d.text;
+                        adaDraf = true;
+                    }
+                });
+            }
+            if(!adaDraf) tambahInputIntervensiSpesifik(pid, rc);
+        });
+        
+        setTimeout(kemaskiniMindmapVisual, 100);
+    }
+
+    function tambahInputIntervensiSpesifik(pid, rc) {
+        intervensiIndex++;
+        const div = document.createElement('div');
+        div.id = `int-item-${intervensiIndex}`;
+        div.className = "flex items-center gap-2 text-xs animate-fadeIn";
+        div.innerHTML = `<input type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 transition-colors" data-pid="${pid}" data-root="${rc}" placeholder="Contoh: Modul Kalam Pendeta" oninput="kemaskiniMindmapVisual()" required>
+                         <button type="button" onclick="document.getElementById('int-item-${intervensiIndex}').remove(); kemaskiniMindmapVisual();" class="text-slate-400 hover:text-red-500"><i class="ph-bold ph-trash"></i></button>`;
+        document.getElementById(`box-list-${pid}`).appendChild(div);
+    }
+
+    window.kemaskiniMindmapVisual = function() {
+        const mmContainer = document.getElementById('mindmap-preview');
+        const mmContent = document.getElementById('mindmap-content');
+        if(!mmContainer || !mmContent) return;
+
+        const groups = {};
+        document.querySelectorAll('#input-cadangan-container input[type="text"]').forEach(el => {
+            const root = el.getAttribute('data-root');
+            const val = el.value.trim();
+            if(!groups[root]) groups[root] = [];
+            if(val) groups[root].push(val);
+        });
+
+        let hasData = false; let html = '';
+        
+        for (const [root, items] of Object.entries(groups)) {
+            if(items.length === 0) continue;
+            hasData = true;
+            
+            let itemHTML = items.map((it, i) => `
+                <div class="px-4 py-3 border-2 ${i===0 ? 'border-sky-400 bg-sky-100 font-bold' : 'border-emerald-400 bg-emerald-50 font-semibold'} text-slate-700 text-xs text-center rounded-lg shadow-sm relative w-full sm:w-72 z-20">
+                    ${it}
+                    <div class="hidden sm:block absolute top-1/2 -left-10 w-10 h-[2px] bg-slate-300 -z-10"></div>
+                </div>
+            `).join('');
+
+            html += `
+            <div class="flex flex-col sm:flex-row items-center gap-10 relative">
+                <div class="w-full sm:w-1/3 px-6 py-5 bg-white border-[3px] border-amber-300 rounded-[100%] shadow-md text-center text-xs font-bold text-slate-700 relative z-20 leading-relaxed min-h-[90px] flex items-center justify-center">
+                    ${root}
+                </div>
+                <div class="flex flex-col gap-3 relative w-full sm:w-auto">
+                    ${itemHTML}
+                    <div class="hidden sm:block absolute top-1/2 -left-10 w-[2px] bg-slate-300 -translate-y-1/2 z-10" style="height: calc(100% - 40px);"></div>
+                </div>
+            </div>`;
+        }
+
+        if(hasData) { mmContent.innerHTML = html; mmContainer.classList.remove('hidden'); } 
+        else { mmContainer.classList.add('hidden'); mmContent.innerHTML = ''; }
+    };
+
+    function binaAntaramukaLangkah4Keutamaan() {
+        const c1 = document.getElementById('rancang-priorityTH1');
+        const c2 = document.getElementById('rancang-priorityTH2');
+        c1.innerHTML = ''; c2.innerHTML = '';
+        
+        let senaraiIntervensi = [];
+        document.querySelectorAll('#rancang-interventionsContainer input[type="text"]').forEach(el => {
+            if(el.value.trim()) senaraiIntervensi.push({ text: el.value.trim(), root: el.getAttribute('data-root') });
+        });
+
+        if (senaraiIntervensi.length < 3) return;
+
+        const getMatrixTemplate = (grp) => `
+            <div class="relative mt-2 mb-6 p-5 sm:p-7 bg-white border border-slate-200 rounded-2xl shadow-sm hidden" id="matrix-preview-container-${grp}">
+                <h4 class="text-center font-bold text-slate-700 text-sm mb-8 uppercase tracking-wider flex items-center justify-center gap-2"><i class="ph-bold ph-squares-four"></i> Matriks Action Priority (Live Preview)</h4>
+                
+                <div class="relative pl-10 pb-10 pt-6 pr-6 bg-slate-50/50 rounded-xl">
+                    <!-- Paksi Y (Impact) -->
+                    <div class="absolute left-6 top-6 bottom-8 w-[2px] bg-slate-800 z-10"></div>
+                    <div class="absolute left-[20px] top-4 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[8px] border-transparent border-b-slate-800 z-10"></div>
+                    <div class="absolute left-[-14px] top-1/2 -translate-y-1/2 -rotate-90 font-black text-slate-500 text-[10px] tracking-widest origin-center z-10">IMPACT</div>
+                    <div class="absolute left-1 top-3 font-bold text-slate-500 text-[10px] z-10">High</div>
+                    
+                    <!-- Paksi X (Effort) -->
+                    <div class="absolute left-6 bottom-8 right-6 h-[2px] bg-slate-800 z-10"></div>
+                    <div class="absolute right-4 bottom-[28px] w-0 h-0 border-t-[6px] border-b-[6px] border-l-[8px] border-transparent border-l-slate-800 z-10"></div>
+                    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 font-black text-slate-500 text-[10px] tracking-widest z-10">EFFORT</div>
+                    <div class="absolute right-4 bottom-3 font-bold text-slate-500 text-[10px] z-10">High</div>
+                    <div class="absolute left-2 bottom-3 font-bold text-slate-400 text-[10px] z-10">Low</div>
+
+                    <!-- Grid 4 Kuadran -->
+                    <div class="grid grid-cols-2 gap-3 min-h-[350px] relative z-20">
+                        <div class="border-2 border-green-500 bg-white rounded-xl p-3 flex flex-col shadow-sm">
+                            <div class="text-slate-400 text-[10px] text-center font-bold uppercase mb-2">Pilih dan Laksana</div>
+                            <div id="matrix-${grp}-tl" class="flex-1 space-y-2"></div>
+                        </div>
+                        <div class="border-2 border-red-500 bg-white rounded-xl p-3 flex flex-col shadow-sm">
+                            <div class="text-slate-400 text-[10px] text-center font-bold uppercase mb-2">Perlu Teliti Semula</div>
+                            <div id="matrix-${grp}-tr" class="flex-1 space-y-2"></div>
+                        </div>
+                        <div class="border-2 border-orange-500 bg-white rounded-xl p-3 flex flex-col shadow-sm">
+                            <div class="text-slate-400 text-[10px] text-center font-bold uppercase mb-2">Boleh Dipertimbangkan</div>
+                            <div id="matrix-${grp}-bl" class="flex-1 space-y-2"></div>
+                        </div>
+                        <div class="border-2 border-yellow-500 bg-white rounded-xl p-3 flex flex-col shadow-sm">
+                            <div class="text-slate-400 text-[10px] text-center font-bold uppercase mb-2">Perlu Elakkan</div>
+                            <div id="matrix-${grp}-br" class="flex-1 space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const renderItems = (grp) => senaraiIntervensi.map((it, idx) => `
+            <div class="p-4 border rounded-xl bg-white shadow-sm text-xs flex items-start gap-4 group transition-all">
+                <input type="checkbox" id="chk-keutamaan-${grp}-${idx}" value="${it.text}" class="custom-checkbox mt-1" onchange="kawalTextareaJustifikasi('${grp}', ${idx})">
+                <div class="flex-1 space-y-2">
+                    <label for="chk-keutamaan-${grp}-${idx}" class="font-bold text-slate-800 cursor-pointer block group-hover:text-indigo-600 text-sm">${it.text}</label>
+                    <span class="inline-block px-2 py-1 bg-slate-100 text-slate-500 rounded text-[10px] font-medium border">🎯 Root Cause: ${it.root}</span>
+                    <div class="grid grid-cols-1 gap-2 pt-2">
+                        <select id="matriks-${grp}-${idx}" class="w-full px-3 py-2.5 border rounded-lg bg-slate-50 text-slate-400 text-xs outline-none font-bold focus:border-indigo-400" onchange="kawalPilihanMatriksUnik('${grp}'); kemaskiniMatrixVisual('${grp}')" disabled>
+                            <option value="">-- Pilih Kuadran Matriks Keutamaan --</option>
+                            <option value="[Pilih & Laksana]">🟩 Pilih & Laksana (Impak Tinggi, Usaha Rendah)</option>
+                            <option value="[Teliti Semula]">🟥 Teliti Semula (Impak Tinggi, Usaha Tinggi)</option>
+                            <option value="[Boleh Dipertimbangkan]">🟧 Boleh Dipertimbangkan (Impak Rendah, Usaha Rendah)</option>
+                            <option value="[Perlu Elakkan]">🟨 Perlu Elakkan (Impak Rendah, Usaha Tinggi)</option>
+                        </select>
+                        <textarea id="justifikasi-${grp}-${idx}" rows="4" class="w-full px-3 py-2.5 border rounded-lg bg-slate-50 text-slate-700 text-xs outline-none focus:border-indigo-400 custom-scroll placeholder:text-slate-400 placeholder:leading-relaxed" placeholder="Penerangan Program:\n(Cth: Murid diberi sebuah modul yang mengandungi kompilasi soalan contoh. Murid diminta menganalisis bahan dan melengkapkan borang grafik. Latihan dilakukan selama 2 minggu sebelum diadakan ujian pengesanan.)" oninput="kemaskiniMatrixVisual('${grp}')" disabled></textarea>
+                    </div>
+                </div>
+            </div>`).join('');
+            
+        c1.innerHTML = getMatrixTemplate('th1') + `<div class="space-y-4">` + renderItems('th1') + `</div>`;
+        c2.innerHTML = `<button type="button" onclick="salinKeutamaanTH1()" class="mb-5 px-5 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-sm"><i class="ph-bold ph-copy text-lg"></i> Salin Pilihan & Penerangan dari TH1</button>` + getMatrixTemplate('th2') + `<div class="space-y-4">` + renderItems('th2') + `</div>`;
+        
+        setTimeout(() => { window.kemaskiniMatrixVisual('th1'); window.kemaskiniMatrixVisual('th2'); }, 100);
+    }
+
+    window.kemaskiniMatrixVisual = function(grp) {
+        const tl = document.getElementById(`matrix-${grp}-tl`);
+        const tr = document.getElementById(`matrix-${grp}-tr`);
+        const bl = document.getElementById(`matrix-${grp}-bl`);
+        const br = document.getElementById(`matrix-${grp}-br`);
+        if(!tl || !tr || !bl || !br) return;
+
+        tl.innerHTML = ''; tr.innerHTML = ''; bl.innerHTML = ''; br.innerHTML = '';
+        
+        let hasData = false;
+        document.querySelectorAll(`input[id^="chk-keutamaan-${grp}-"]:checked`).forEach(cb => {
+            hasData = true;
+            const parent = cb.closest('.group');
+            const prog = cb.value;
+            const sel = parent.querySelector('select').value;
+            const just = parent.querySelector('textarea').value.trim();
+
+            const card = `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 animate-fadeIn mb-2 shadow-sm relative">
+                    <div class="font-bold text-slate-800 text-xs leading-snug mb-1">${prog}</div>
+                    <div class="text-slate-500 text-[10px] leading-snug">${just || '...'}</div>
+                </div>
+            `;
+
+            if(sel === '[Pilih & Laksana]') tl.innerHTML += card;
+            else if(sel === '[Teliti Semula]') tr.innerHTML += card;
+            else if(sel === '[Boleh Dipertimbangkan]') bl.innerHTML += card;
+            else if(sel === '[Perlu Elakkan]') br.innerHTML += card;
+        });
+
+        const container = document.getElementById(`matrix-preview-container-${grp}`);
+        if(hasData) container.classList.remove('hidden');
+        else container.classList.add('hidden');
+    };
+
+    window.salinKeutamaanTH1 = function() {
+        const chk1 = document.querySelectorAll('#rancang-priorityTH1 input[type="checkbox"]');
+        const txt1 = document.querySelectorAll('#rancang-priorityTH1 textarea');
+        const sel1 = document.querySelectorAll('#rancang-priorityTH1 select');
+        const chk2 = document.querySelectorAll('#rancang-priorityTH2 input[type="checkbox"]');
+        const txt2 = document.querySelectorAll('#rancang-priorityTH2 textarea');
+        const sel2 = document.querySelectorAll('#rancang-priorityTH2 select');
+        
+        chk1.forEach((cb, i) => {
+            if(chk2[i]) {
+                chk2[i].checked = cb.checked;
+                window.kawalTextareaJustifikasi('th2', i);
+                if(cb.checked && txt2[i] && txt1[i] && sel2[i] && sel1[i]) {
+                    sel2[i].value = sel1[i].value;
+                    txt2[i].value = txt1[i].value;
+                }
+            }
+        });
+        window.kawalPilihanMatriksUnik('th2');
+        window.kemaskiniMatrixVisual('th2');
+        paparToast("Keutamaan disalin dari Kumpulan 1!", "success");
+    };
+
+    window.kawalTextareaJustifikasi = function(grp, idx) {
+        const chk = document.getElementById(`chk-keutamaan-${grp}-${idx}`);
+        const ta = document.getElementById(`justifikasi-${grp}-${idx}`);
+        const sel = document.getElementById(`matriks-${grp}-${idx}`);
+        ta.disabled = !chk.checked;
+        sel.disabled = !chk.checked;
+        if(chk.checked) { 
+            ta.classList.replace('bg-slate-50', 'bg-white'); ta.focus();
+            sel.classList.replace('bg-slate-50', 'bg-white'); 
+        } else { 
+            ta.classList.replace('bg-white', 'bg-slate-50'); ta.value = ''; 
+            sel.classList.replace('bg-white', 'bg-slate-50'); sel.value = ''; 
+        }
+        window.kawalPilihanMatriksUnik(grp);
+        window.kemaskiniMatrixVisual(grp);
+    };
+
+    window.kawalPilihanMatriksUnik = function(grp) {
+        const selects = document.querySelectorAll(`select[id^="matriks-${grp}-"]`);
+        selects.forEach(s => {
+            Array.from(s.options).forEach(opt => { 
+                if (opt.value !== "") {
+                    opt.disabled = false; 
+                    opt.style.color = '';
+                    opt.text = opt.text.replace(' (Telah Dipilih)', '');
+                }
+            });
+        });
+
+        selects.forEach(s => {
+            if (s.value) {
+                s.classList.remove('text-slate-400');
+                s.classList.add('text-indigo-700');
+                selects.forEach(otherS => {
+                    if (otherS !== s) {
+                        const opt = otherS.querySelector(`option[value="${s.value}"]`);
+                        if (opt) { 
+                            opt.disabled = true; 
+                            opt.style.color = '#cbd5e1'; 
+                            if(!opt.text.includes('(Telah Dipilih)')) opt.text += ' (Telah Dipilih)';
+                        }
+                    }
+                });
+            } else {
+                s.classList.remove('text-indigo-700');
+                s.classList.add('text-slate-400');
+            }
+        });
+    };
+
+    function binaAntaramukaLangkah5PelanTindakan() {
+        const c1 = document.getElementById('rancang-planTH1');
+        const c2 = document.getElementById('rancang-planTH2');
+        c1.innerHTML = ''; c2.innerHTML = '';
+
+        const dapatkanTerpilih = (grp, label) => {
+            let arr = [];
+            document.querySelectorAll(`#rancang-priority${grp} input[type="checkbox"]:checked`).forEach(cb => {
+                const parent = cb.closest('div');
+                const matriksVal = parent.querySelector('select').value;
+                const taVal = parent.querySelector('textarea').value;
+                
+                // Hanya ambil yang dipilih ke Kuadran Pilih & Laksana
+                if (matriksVal === '[Pilih & Laksana]') {
+                    arr.push({ program: cb.value, info: `[${label}] Justifikasi: ${taVal}` });
+                }
+            });
+            
+            // Beri amaran visual jika guru tak tanda sebarang Pilih & Laksana
+            if (arr.length === 0) {
+                arr.push({ program: "⚠️ TIADA INTERVENSI UTAMA DIPILIH", info: `Sila kembali ke Langkah 4 dan pastikan ada sekurang-kurangnya satu intervensi disetkan ke kuadran 'Pilih & Laksana' untuk Kumpulan ${label}.` });
+            }
+            return arr;
+        };
+
+        const list1 = dapatkanTerpilih('TH1', 'Tunas Harapan 1');
+        const list2 = dapatkanTerpilih('TH2', 'Tunas Harapan 2');
+        const guruOpts = window.senaraiGuruUtama ? window.senaraiGuruUtama.map(g => `<option value="${g}">${g}</option>`).join('') : '';
+        
+       const layout = (it, i, idPrefix) => `
+            <div class="mb-10 bg-slate-50 p-5 md:p-7 rounded-2xl border border-slate-200">
+                <div class="mb-6">
+                    <h5 class="font-black text-slate-800 text-lg uppercase">${it.program}</h5>
+                    <p class="text-slate-500 italic text-sm mt-1 mb-4">${it.info}</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Markah / KPI Sasaran</label>
+                            <input type="text" name="sasaran-skor-${idPrefix}-${i}" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-indigo-400 transition-colors font-semibold" placeholder="Cth: Capai skor sasaran 20/30" required>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fokus / Objektif Kumpulan</label>
+                            <input type="text" name="sasaran-objektif-${idPrefix}-${i}" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-indigo-400 transition-colors font-semibold" placeholder="Cth: Boleh menulis huraian isi dengan baik" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    ${[1, 2, 3].map(cp => `
+                    <div class="p-5 border border-slate-200 rounded-2xl bg-white shadow-sm space-y-5 mb-4 relative">
+                        <!-- Header CP -->
+                        <div class="border-b border-slate-100 pb-2">
+                            <h6 class="font-extrabold text-indigo-700 text-lg">CP ${cp}</h6>
+                        </div>
+
+                        <!-- Baris 1: Tarikh -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tempoh / Tarikh</label>
+                                <input type="text" name="cp${cp}-date-${idPrefix}-${i}" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-indigo-400 transition-colors" placeholder="Cth: 26.01 - 6.02" required>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tarikh CP</label>
+                                <input type="text" name="cp${cp}-tempoh-${idPrefix}-${i}" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-indigo-400 transition-colors" placeholder="Cth: 6 Feb" required>
+                            </div>
+                        </div>
+
+                        <!-- Baris 2: Pengisian -->
+                        <div class="space-y-1">
+                            <label class="text-[11px] font-bold text-slate-800 uppercase tracking-wider block mb-1">Pengisian (Proses & CP)</label>
+                            <textarea name="cp${cp}-isi-${idPrefix}-${i}" rows="5" class="w-full px-4 py-3 border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-indigo-400 custom-scroll transition-colors leading-relaxed placeholder:text-slate-400" placeholder="PROSES SEBELUM CP:\n(Cth: Murid membuat latihan...)\n\nCP:\n(Cth: Murid menjawab 1 soalan...)" required></textarea>
+                        </div>
+
+                        <!-- Baris 3: Tindakan Guru -->
+                        <div class="space-y-1">
+                            <label class="text-[11px] font-bold text-slate-800 uppercase tracking-wider block mb-1">Tindakan (Guru)</label>
+                            <select multiple name="cp${cp}-guru-${idPrefix}-${i}" class="guru-select w-full" required>${guruOpts}</select>
+                        </div>
+                    </div>
+                    `).join('')}
+                </div>
+            </div>`;
+            
+        list1.forEach((it, i) => c1.insertAdjacentHTML('beforeend', layout(it, i, 'th1')));
+        c2.innerHTML = `<button type="button" onclick="salinPelanTH1()" class="mb-5 px-5 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-sm font-bold transition-colors flex items-center gap-2 shadow-sm"><i class="ph-bold ph-copy text-lg"></i> Salin Tempoh, Pengisian & Pelaksana dari TH1</button>`;
+        list2.forEach((it, i) => c2.insertAdjacentHTML('beforeend', layout(it, i, 'th2')));
+
+        document.querySelectorAll('.guru-select').forEach(el => {
+            if(el.tomselect) el.tomselect.destroy();
+            new TomSelect(el, { plugins: ['remove_button'], placeholder: 'Pilih Guru...' });
+        });
+    }
+
+    window.salinPelanTH1 = function() {
+        ['cp1','cp2','cp3'].forEach(cp => {
+            const dates = document.querySelectorAll(`#rancang-planTH1 input[name^="${cp}-date-th1-"]`);
+            const tempohs = document.querySelectorAll(`#rancang-planTH1 input[name^="${cp}-tempoh-th1-"]`);
+            const isis = document.querySelectorAll(`#rancang-planTH1 textarea[name^="${cp}-isi-th1-"]`);
+            const gurus = document.querySelectorAll(`#rancang-planTH1 select[name^="${cp}-guru-th1-"]`);
+            
+            document.querySelectorAll(`#rancang-planTH2 input[name^="${cp}-date-th2-"]`).forEach((el, i) => { if (dates[i]) el.value = dates[i].value; });
+            document.querySelectorAll(`#rancang-planTH2 input[name^="${cp}-tempoh-th2-"]`).forEach((el, i) => { if (tempohs[i]) el.value = tempohs[i].value; });
+            document.querySelectorAll(`#rancang-planTH2 textarea[name^="${cp}-isi-th2-"]`).forEach((el, i) => { if (isis[i]) el.value = isis[i].value; });
+            document.querySelectorAll(`#rancang-planTH2 select[name^="${cp}-guru-th2-"]`).forEach((el, i) => { 
+                if (gurus[i] && el.tomselect) el.tomselect.setValue(gurus[i].tomselect.getValue());
+            });
+        });
+        const skor1 = document.querySelectorAll('#rancang-planTH1 input[name^="sasaran-skor-th1-"]');
+        const obj1 = document.querySelectorAll('#rancang-planTH1 input[name^="sasaran-objektif-th1-"]');
+        document.querySelectorAll('#rancang-planTH2 input[name^="sasaran-skor-th2-"]').forEach((el, i) => { if(skor1[i]) el.value = skor1[i].value; });
+        document.querySelectorAll('#rancang-planTH2 input[name^="sasaran-objektif-th2-"]').forEach((el, i) => { if(obj1[i]) el.value = obj1[i].value; });
+        paparToast("Maklumat disalin dari Kumpulan 1!", "success");
+    };
+
+    function hantarBorangRancang() {
+        let complete = true;
+        let firstEmptyEl = null;
+
+        // Bersihkan bingkai amaran merah yang lama
+        document.querySelectorAll('#rancang-planTH1, #rancang-planTH2').forEach(container => {
+            container.querySelectorAll('.border-red-500').forEach(el => {
+                el.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
+            });
+            
+            container.querySelectorAll('input[type="text"]:not(.ts-control input), textarea, select').forEach(el => {
+                let isEmpty = false;
+                if(el.tagName === 'SELECT' && el.tomselect) {
+                    if(el.tomselect.getValue().length === 0) isEmpty = true;
+                } else if(!el.value.trim()) {
+                    isEmpty = true;
+                }
+
+                if(isEmpty) {
+                    complete = false;
+                    if(!firstEmptyEl) firstEmptyEl = el; // Simpan kotak kosong pertama dikesan
+                    
+                    // Warnakan merah
+                    if(el.tagName === 'SELECT' && el.tomselect) {
+                        el.tomselect.control.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                    } else {
+                        el.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                    }
+                }
+            });
+        });
+
+        if(!complete) { 
+            paparMsgRancang("Terdapat ruangan belum diisi! Sila lengkapkan petak berbingkai merah.", true); 
+            
+            // Tatal (scroll) skrin terus ke kotak kosong pertama
+            if(firstEmptyEl) {
+                let targetScroll = firstEmptyEl;
+                if(firstEmptyEl.tagName === 'SELECT' && firstEmptyEl.tomselect) targetScroll = firstEmptyEl.tomselect.control;
+                targetScroll.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if(firstEmptyEl.tagName !== 'SELECT') firstEmptyEl.focus();
+            }
+            return; 
+        }
+
+        toggleLoader(true, "Menghantar Pelan", "Sistem sedang menjana dokumentasi intervensi...");
+
+        const puncaPM = [];
+        document.querySelectorAll('#rancang-problemsContainer > div').forEach(el => {
+            puncaPM.push({ zoom1: el.querySelector('[name="problemZoom1"]').value, zoom2: el.querySelector('[name="problemZoom2"]').value, rootCause: el.querySelector('[name="problemRootCause"]').value });
+        });
+
+        const cadanganInt = [];
+        document.querySelectorAll('#rancang-interventionsContainer input[type="text"]').forEach(el => {
+            if(el.value.trim()) cadanganInt.push(el.value.trim());
+        });
+
+        const keutamaanList = [];
+        const kumpulKeutamaan = (idGrp, label) => {
+            let adaPilihan = false;
+            document.querySelectorAll(`#rancang-priority${idGrp} input[type="checkbox"]:checked`).forEach(cb => {
+                const parentDiv = cb.closest('div');
+                const matriksVal = parentDiv.querySelector('select').value;
+                const huraianVal = parentDiv.querySelector('textarea').value;
+                
+                // Pastikan data dihantar sync dengan Pelan Tindakan UI (Pilih & Laksana sahaja)
+                if (matriksVal === '[Pilih & Laksana]') {
+                    keutamaanList.push({ intervensi: cb.value, keterangan: `[${label}] ${matriksVal} Justifikasi: ${huraianVal}` });
+                    adaPilihan = true;
+                }
+            });
+            
+            // Backup keselamatan jika tiada Pilih & Laksana
+            if(!adaPilihan) {
+                keutamaanList.push({ intervensi: "⚠️ TIADA INTERVENSI UTAMA DIPILIH", keterangan: `[${label}] Ralat: Sila kemaskini perancangan.` });
+            }
+        };
+        
+        kumpulKeutamaan('TH1', 'Tunas Harapan 1');
+        const offsetTH2 = keutamaanList.length; // Titik pemisah array untuk Kumpulan 2
+        kumpulKeutamaan('TH2', 'Tunas Harapan 2');
+
+        const pelanTindakanAkhir = [];
+        const ekstrakPelan = (container, prefix, offset) => {
+            document.querySelectorAll(container + ' > div').forEach((el, idx) => {
+                const k = keutamaanList[idx + offset];
+                if (!k) return;
+                
+                const getVal = (cp, medan) => { 
+                    const inEl = el.querySelector(`[name="${cp}-${medan}-${prefix}-${idx}"]`); 
+                    if (!inEl) return "";
+                    if (inEl.multiple && inEl.tomselect) return inEl.tomselect.getValue().join(', ');
+                    return inEl.value; 
+                };
+                const gabungMasa = (cp) => {
+                    const d = getVal(cp, 'date'); const t = getVal(cp, 'tempoh');
+                    return (d && t) ? `${d} (${t})` : `${d}${t}`;
+                };
+                const getRootVal = (medan) => {
+                    const inEl = el.querySelector(`[name="sasaran-${medan}-${prefix}-${idx}"]`);
+                    return inEl ? inEl.value : "";
+                };
+
+                pelanTindakanAkhir.push({
+                    program: k.intervensi, keterangan: k.keterangan,
+                    sasaranSkor: getRootVal('skor'),
+                    sasaranObjektif: getRootVal('objektif'),
+                    cp1: { date: gabungMasa('cp1'), isi: getVal('cp1', 'isi'), guru: getVal('cp1', 'guru') },
+                    cp2: { date: gabungMasa('cp2'), isi: getVal('cp2', 'isi'), guru: getVal('cp2', 'guru') },
+                    cp3: { date: gabungMasa('cp3'), isi: getVal('cp3', 'isi'), guru: getVal('cp3', 'guru') }
+                });
+            });
+        };
+        ekstrakPelan('#rancang-planTH1', 'th1', 0);
+        ekstrakPelan('#rancang-planTH2', 'th2', offsetTH2);
+
+        const payload = {
+            subject: document.getElementById('rancang-subject').value,
+            sesi: document.getElementById('rancang-sesi').value,
+            year: document.getElementById('rancang-year').value,
+            studentDataTH1: dataMuridRancangTP1, studentDataTH2: dataMuridRancangTP2,
+            problems: puncaPM, interventions: cadanganInt, priorities: keutamaanList, actionPlans: pelanTindakanAkhir
+        };
+
+        fetch(GLOBAL_GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
+        .then(r => r.json())
+        .then(res => {
+            document.getElementById('rancang-formContainer').classList.add('hidden');
+            document.getElementById('rancang-successScreen').classList.remove('hidden');
+            document.getElementById('rancang-successText').innerText = "Data berjaya disimpan. Sila cetak laporan HTML/Slaid anda sekarang.";
+            
+            // Masukkan data terus ke array sementara supaya boleh dicetak serta-merta
+            semakanFilteredDataUtama.unshift({ fullData: payload, subject: payload.subject, sesi: payload.sesi, year: payload.year, timestamp: new Date() });
+            
+            const btnPdf = document.getElementById('rancang-pdfBtn');
+            btnPdf.href = "#";
+            btnPdf.onclick = (e) => { e.preventDefault(); bukaLiveSlide(0); };
+            btnPdf.innerHTML = `<i class="ph-bold ph-printer"></i> Buka & Cetak Laporan`;
+            btnPdf.classList.remove('hidden');
+            
+            sedutDataUtamaDariPangkalan();
+        })
+        .catch(err => { console.error(err); paparToast("Gagal menghantar perancangan.", "error"); })
+        .finally(() => toggleLoader(false));
+    }
+
+    function resetRancangBorang() {
+        document.getElementById('rancang-form').reset();
+        document.getElementById('rancang-problemsContainer').innerHTML = '';
+        document.getElementById('rancang-previewContainer').innerHTML = '';
+        document.getElementById('rancang-countTH1').innerText = '0';
+        document.getElementById('rancang-countTH2').innerText = '0';
+        document.getElementById('rancang-formContainer').classList.remove('hidden');
+        document.getElementById('rancang-successScreen').classList.add('hidden');
+        currentStep = 1; navigateWizard(0); problemRowIndex = 0; addProblemRow();
+    }
+
+    const stepTitles = ["Langkah 1: Kenal Pasti Kumpulan Tumpuan", "Langkah 2: Punca Masalah (Root Cause)", "Langkah 3: Cadangan Intervensi", "Langkah 4: Pilih Keutamaan", "Langkah 5: Pelan Tindakan"];
+
+    function semakDanMuatDraf() {
+        const sub = document.getElementById('rancang-subject').value;
+        const sesi = document.getElementById('rancang-sesi').value;
+        const yr = document.getElementById('rancang-year').value;
+        if(!sub || !sesi || !yr) return;
+        
+        document.getElementById('rancang-draftBtn').classList.remove('hidden');
+
+        const key = `${sub}_${sesi}_${yr}`;
+        if(pangkalanDraf[key]) {
+            try {
+                const draf = JSON.parse(pangkalanDraf[key]);
+                document.getElementById('rancang-problemsContainer').innerHTML = '';
+                problemRowIndex = 0;
+                
+                draf.punca.forEach(p => {
+                    addProblemRow();
+                    const row = document.getElementById(`pm-row-${problemRowIndex}`);
+                    row.querySelector('[name="problemZoom1"]').value = p.z1;
+                    row.querySelector('[name="problemZoom2"]').value = p.z2;
+                    row.querySelector('[name="problemRootCause"]').value = p.rc;
+                });
+                
+                window.drafIntervensi = draf.intervensi;
+                paparToast("Draf kolaborasi ditemui dan dimuatkan secara automatik!", "success");
+            } catch(e){}
+        } else {
+            window.drafIntervensi = null;
+        }
+    }
+
+    document.getElementById('rancang-subject').addEventListener('change', () => { setTimeout(semakDanMuatDraf, 800); });
+
+    function simpanDrafSemasa() {
+        const sub = document.getElementById('rancang-subject').value;
+        const sesi = document.getElementById('rancang-sesi').value;
+        const yr = document.getElementById('rancang-year').value;
+        
+        if(!sub || !sesi || !yr) { paparMsgRancang("Lengkapkan maklumat atas dahulu.", true); return; }
+
+        toggleLoader(true, "Menyimpan Draf", "Merekod input kolaborasi anda...");
+        
+        const punca = [];
+        document.querySelectorAll('#rancang-problemsContainer > div').forEach(el => {
+            punca.push({ 
+                z1: el.querySelector('[name="problemZoom1"]').value, 
+                z2: el.querySelector('[name="problemZoom2"]').value, 
+                rc: el.querySelector('[name="problemRootCause"]').value 
+            });
+        });
+
+        const intv = [];
+        document.querySelectorAll('#rancang-interventionsContainer input[type="text"]').forEach(el => {
+            if(el.value.trim()) intv.push({ root: el.getAttribute('data-root'), text: el.value.trim() });
+        });
+
+        const payload = {
+            action: "simpan_draf", subject: sub, sesi: sesi, year: yr,
+            draftData: { punca: punca, intervensi: intv }
+        };
+
+        fetch(GLOBAL_GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
+        .then(r => r.json())
+        .then(res => {
+            paparToast("Draf berjaya disimpan! Boleh disambung oleh guru lain.", "success");
+            pangkalanDraf[`${sub}_${sesi}_${yr}`] = JSON.stringify(payload.draftData);
+        }).finally(() => toggleLoader(false));
+    }
+
+    // =========================================================================
+    // LOGIK MODUL 5: LAPORAN KEBERHASILAN PILL
+    // =========================================================================
+    async function tarikDataMuridHasil() {
+        const sub = document.getElementById('hasil-subject').value;
+        if (!sub) return;
+        
+        toggleLoader(true, "Menyaring Data Keberhasilan", "Mengumpulkan maklumat sasaran asal dari pelayan...");
+        
+        try {
+            const res = await fetch(GLOBAL_GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "get_murid_subjek", subject: sub }),
+                redirect: "follow"
+            });
+            const json = await res.json();
+            const filtered = json.dataMurid || [];
+            
+            const tp1 = filtered.filter(r => String(r['TAHAP PENGUASAAN']).trim() === '1');
+            const tp2 = filtered.filter(r => String(r['TAHAP PENGUASAAN']).trim() === '2');
+            
+            dataMuridHasilAsal = [...tp1, ...tp2].map((r, i) => ({
+                id: i, nama: r['NAMA'], kelas: r['KELAS'], tpAsal: parseInt(r['TAHAP PENGUASAAN']), tpTerkini: parseInt(r['TAHAP PENGUASAAN'])
+            }));
+
+            if(dataMuridHasilAsal.length > 0) {
+                document.getElementById('hasil-dashboardArea').classList.remove('hidden');
+                binaJadualPelajarKeberhasilan();
+                paparToast(`Senarai ${dataMuridHasilAsal.length} murid sedia untuk audit keberhasilan.`, "success");
+            } else {
+                document.getElementById('hasil-dashboardArea').classList.add('hidden');
+                paparToast("Tiada murid sasaran TP1/TP2 bagi subjek ini.", "error");
+            }
+        } catch (err) {
+            console.error(err);
+            paparToast("Gagal menarik data keberhasilan.", "error");
+        } finally {
+            toggleLoader(false);
+        }
+    }
+
+    function binaJadualPelajarKeberhasilan() {
+        const body = document.getElementById('hasil-studentTableBody'); body.innerHTML = '';
+        dataMuridHasilAsal.forEach((s, idx) => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 text-xs";
+            
+            let options = '';
+            for(let i=1; i<=6; i++) options += `<option value="${i}" ${s.tpTerkini == i ? 'selected' : ''}>TP ${i}</option>`;
+            options += `<option value="TD" ${s.tpTerkini === 'TD' ? 'selected' : ''}>TD</option>`;
+            options += `<option value="Pindah" ${s.tpTerkini === 'Pindah' ? 'selected' : ''}>Pindah</option>`;
+
+            tr.innerHTML = `
+                <td class="px-4 py-3 text-slate-400 font-mono">${idx+1}</td>
+                <td class="px-4 py-3 font-bold text-slate-700">${toTitleCase(s.nama)}</td>
+                <td class="px-4 py-3 text-slate-500">${s.kelas}</td>
+                <td class="px-4 py-3 text-center">
+                        ${r.pdfUrl ? `
+                        <div class="flex items-center justify-center gap-3">
+                            <a href="${r.pdfUrl}" target="_blank" class="text-indigo-600 font-bold hover:underline flex items-center gap-0.5"><i class="ph-bold ph-file-pdf"></i> Buka</a>
+                            <button onclick="bukaModBentang('${r.pdfUrl}')" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5"><i class="ph-bold ph-projector-screen"></i> Bentang</button>
+                        </div>
+                        ` : '-'}
+                    </td>
+                <td class="px-4 py-3 text-center" id="hasil-status-badge-${idx}">${binaLencanaStatusHasil(s.tpAsal, s.tpTerkini)}</td>`;
+            body.appendChild(tr);
+        });
+        kiraStatistikDanGrafKeberhasilan();
+    }
+
+    function binaLencanaStatusHasil(asal, terkini) {
+        if (terkini === 'TD') return `<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold">TD</span>`;
+        if (terkini === 'Pindah') return `<span class="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full font-bold">Pindah</span>`;
+        if (parseInt(terkini) > parseInt(asal)) return `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold">Meningkat</span>`;
+        return `<span class="px-2 py-0.5 bg-slate-100 text-slate-400 rounded-full font-bold">Kekal</span>`;
+    }
+
+    function kemaskiniManualTPPelajarHasil(idx, val) {
+        dataMuridHasilAsal[idx].tpTerkini = (val === 'TD' || val === 'Pindah') ? val : parseInt(val);
+        document.getElementById(`hasil-status-badge-${idx}`).innerHTML = binaLencanaStatusHasil(dataMuridHasilAsal[idx].tpAsal, val);
+        kiraStatistikDanGrafKeberhasilan();
+    }
+
+    function bacaCsvTPTerkini(input) {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const lines = e.target.result.split(/\r\n|\r|\n/);
+            const latestMap = new Map();
+            lines.forEach(line => {
+                if(!line.trim()) return;
+                const parts = line.split(','); if(parts.length < 3) return;
+                const name = parts[0].replace(/"/g,'').trim().toLowerCase();
+                let tpVal = null;
+                const v1 = parts[parts.length-1].replace(/"/g,'').trim();
+                if(v1.toUpperCase() === 'TD') tpVal = 'TD';
+                else if(!isNaN(v1) && v1 !== '') tpVal = parseInt(v1);
+                if(tpVal !== null) latestMap.set(name, tpVal);
+            });
+
+            let match = 0, pindah = 0;
+            dataMuridHasilAsal.forEach(s => {
+                const k = s.nama.toLowerCase();
+                if(latestMap.has(k)) { s.tpTerkini = latestMap.get(k); match++; }
+                else { s.tpTerkini = 'Pindah'; pindah++; }
+            });
+            binaJadualPelajarKeberhasilan();
+            paparToast(`CSV Berjaya diproses! ${match} murid dikemaskini, ${pindah} ditanda Pindah.`, "success");
+            input.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function kiraStatistikDanGrafKeberhasilan() {
+        let imp = 0, stag = 0, td = 0, pndh = 0, valid = 0;
+        const before = [0,0,0,0,0,0], after = [0,0,0,0,0,0];
+
+        dataMuridHasilAsal.forEach(s => {
+            if(s.tpAsal >=1 && s.tpAsal <=6) before[s.tpAsal-1]++;
+            if(s.tpTerkini === 'TD') td++;
+            else if(s.tpTerkini === 'Pindah') pndh++;
+            else {
+                valid++;
+                if(s.tpTerkini >=1 && s.tpTerkini <=6) after[s.tpTerkini-1]++;
+                if(s.tpTerkini > s.tpAsal) imp++; else stag++;
+            }
+        });
+
+        document.getElementById('hasil-statImproved').innerText = imp;
+        document.getElementById('hasil-statStagnant').innerText = stag;
+        document.getElementById('hasil-statTD').innerText = td;
+        document.getElementById('hasil-statPindah').innerText = pndh;
+
+        const rate = valid > 0 ? Math.round((imp / valid) * 100) : 0;
+        document.getElementById('hasil-successRateText').innerText = `${rate}%`;
+        document.getElementById('hasil-percImp').innerText = rate + "%";
+        document.getElementById('hasil-percStag').innerText = (valid > 0 ? (100 - rate) : 0) + "%";
+
+        const ctxBar = document.getElementById('hasil-chartBar').getContext('2d');
+        if(comparisonChartInstance) comparisonChartInstance.destroy();
+        comparisonChartInstance = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['TP1','TP2','TP3','TP4','TP5','TP6'],
+                datasets: [
+                    { label: 'Sebelum', data: before, backgroundColor: '#cbd5e1', borderRadius: 4, barPercentage: 0.85, categoryPercentage: 0.85 },
+                    { label: 'Selepas', data: after, backgroundColor: '#4f46e5', borderRadius: 4, barPercentage: 0.85, categoryPercentage: 0.85 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        const ctxPie = document.getElementById('hasil-chartPie').getContext('2d');
+        if(successChartInstance) successChartInstance.destroy();
+        successChartInstance = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: { labels: ['Meningkat', 'Kekal'], datasets: [{ data: [imp, stag], backgroundColor: ['#10b981', '#f1f5f9'] }] },
+            options: { cutout: '70%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function hantarLaporanKeberhasilan() {
+        toggleLoader(true, "Menghantar Laporan", "Sistem sedang mengunci data keberhasilan pelan...");
+        
+        const payload = {
+            type: "update_keberhasilan",
+            timestamp: new Date().toISOString(),
+            subject: document.getElementById('hasil-subject').value,
+            sesi: document.getElementById('hasil-sesi').value,
+            year: document.getElementById('hasil-year').value,
+            stats: {
+                improved: document.getElementById('hasil-statImproved').innerText,
+                stagnant: document.getElementById('hasil-statStagnant').innerText,
+                td: document.getElementById('hasil-statTD').innerText,
+                pindah: document.getElementById('hasil-statPindah').innerText
+            },
+            studentData: dataMuridHasilAsal.map(s => ({ nama: s.nama, kelas: s.kelas, tpAsal: s.tpAsal, tpTerkini: s.tpTerkini })),
+            charts: {
+                comparison: comparisonChartInstance ? comparisonChartInstance.toBase64Image() : "",
+                success: successChartInstance ? successChartInstance.toBase64Image() : ""
+            }
+        };
+
+        fetch(GLOBAL_GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
+        .then(r => r.json())
+        .then(res => {
+            if(res.status === 'success') {
+                paparToast("Laporan keberhasilan selamat direkodkan!", "success");
+                document.getElementById('hasil-submitBtn').classList.add('hidden');
+                const postBox = document.getElementById('hasil-postSubmit'); postBox.classList.remove('hidden');
+                
+                // Kemaskini butang kepada cetakan HTML
+                semakanFilteredDataUtama.unshift({ fullData: payload, subject: payload.subject, sesi: payload.sesi, year: payload.year, timestamp: new Date(), pdfUrl: "Keberhasilan" });
+                const btnPdf = document.getElementById('hasil-openPdfBtn');
+                btnPdf.innerHTML = `<i class="ph-bold ph-printer"></i> Buka & Cetak Laporan`;
+                btnPdf.onclick = (e) => { e.preventDefault(); bukaLiveSlide(0); };
+                
+                sedutDataUtamaDariPangkalan();
+            }
+        })
+        .catch(e => { console.error(e); paparToast("Gagal memproses penghantaran.", "error"); })
+        .finally(() => toggleLoader(false));
+    }
+
+    // =========================================================================
+    // LOGIK MODUL 4: PANGKALAN DATA SEMAKAN (DENGAN PAGINATION & SLAID)
+    // =========================================================================
+    function binaJadualSemakanUrusan() {
+        semakanCurrentPage = 1; 
+        const type = document.getElementById("semak-fType").value;
+        const sub = document.getElementById("semak-fSubject").value;
+        const sesi = document.getElementById("semak-fSesi").value;
+        const y = document.getElementById("semak-fYear").value;
+
+        const setOpts = (key, elId) => {
+            const el = document.getElementById(elId); const old = el.value;
+            const unique = [...new Set(senaraiRekodPILL.map(x => String(x[key] || '')))].filter(Boolean).sort();
+            el.innerHTML = '<option value="">Semua</option>' + unique.map(o => `<option value="${o}">${o}</option>`).join('');
+            el.value = old;
+        };
+        setOpts('subject', 'semak-fSubject'); setOpts('sesi', 'semak-fSesi'); setOpts('year', 'semak-fYear');
+
+        semakanFilteredDataUtama = senaraiRekodPILL.filter(r =>
+            (!type || r.type === type) && (!sub || r.subject === sub) && (!sesi || r.sesi === sesi) && (!y || String(r.year) === y)
+        );
+
+        paparkanMukaSuratSemakan();
+    }
+
+    function paparkanMukaSuratSemakan() {
+        const body = document.getElementById("semak-tableBody");
+        body.innerHTML = '';
+        document.getElementById("semak-chkAll").checked = false;
+        kemaskiniUIAngkaTerpilihPukal();
+
+        if (semakanFilteredDataUtama.length === 0) {
+            document.getElementById("semak-emptyState").classList.remove("hidden");
+            buangButangPagination();
+            return;
+        }
+        document.getElementById("semak-emptyState").classList.add("hidden");
+
+        const mula = (semakanCurrentPage - 1) * semakanItemsPerPage;
+        const tamat = mula + semakanItemsPerPage;
+        const dataMukaSuratIni = semakanFilteredDataUtama.slice(mula, tamat);
+
+        body.innerHTML = dataMukaSuratIni.map((r, i) => {
+            const indeksSebenar = mula + i + 1;
+            const arrayIndex = mula + i; // Index dalam semakanFilteredDataUtama untuk Slaid
+            const isKeb = r.pdfUrl && r.pdfUrl.includes("Keberhasilan") || (r.subject && !r.fullData);
+            const lbl = isKeb ? "Keberhasilan" : "Perancangan";
+            const bg = isKeb ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200";
+            return `
+                <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="px-4 py-3 text-center hidden semak-admin-col bg-red-50/10"><input type="checkbox" class="custom-checkbox row-checkbox" value="${r.id}" onchange="kemaskiniUIAngkaTerpilihPukal()"></td>
+                    <td class="px-4 py-3 text-center text-slate-400 font-mono">${indeksSebenar}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full border text-[10px] font-bold ${bg}">${lbl}</span></td>
+                    <td class="px-4 py-3 font-semibold text-slate-700">${r.subject}</td>
+                    <td class="px-4 py-3 text-slate-500">${r.sesi}</td>
+                    <td class="px-4 py-3 text-center font-bold">${r.year}</td>
+                    <td class="px-4 py-3 text-center text-slate-400 font-mono text-[11px]">${formatDateString(r.timestamp)}</td>
+                    <td class="px-4 py-3 text-center flex items-center justify-center gap-3">
+                        ${r.pdfUrl ? `<a href="${r.pdfUrl}" target="_blank" class="text-indigo-600 font-bold hover:underline flex items-center gap-1" title="Buka PDF"><i class="ph-bold ph-file-pdf text-lg"></i></a>` : '-'}
+                        ${!isKeb && r.fullData ? `<button onclick="bukaLiveSlide(${arrayIndex})" class="text-emerald-600 font-bold hover:underline flex items-center gap-1" title="Bentang Slaid"><i class="ph-bold ph-presentation-chart text-lg"></i></button>` : ''}
+                    </td>
+                    <td class="px-4 py-3 text-center hidden semak-admin-col">
+                        <button onclick="bukaModalPadamSatu('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 p-1.5 rounded-lg"><i class="ph-bold ph-trash"></i></button>
+                    </td>
+                </tr>`;
+        }).join('');
+
+        kawalLajurAdminSemakanVisibility();
+        binaButangPagination();
+    }
+
+    function binaButangPagination() {
+        buangButangPagination(); 
+        const jumlahMukaSurat = Math.ceil(semakanFilteredDataUtama.length / semakanItemsPerPage);
+        if (jumlahMukaSurat <= 1) return;
+
+        const tableContainer = document.getElementById("semak-tableBody").closest('.bg-white.rounded-2xl');
+        const pagDiv = document.createElement("div");
+        pagDiv.id = "kawalan-pagination-semakan";
+        pagDiv.className = "flex justify-between items-center px-6 py-4 bg-slate-50 border-t border-slate-200";
+
+        pagDiv.innerHTML = `
+            <span class="text-xs font-bold text-slate-500">Muka surat ${semakanCurrentPage} daripada ${jumlahMukaSurat}</span>
+            <div class="flex gap-2">
+                <button onclick="tukarMukaSuratSemakan(-1)" class="px-3 py-1.5 text-xs font-bold border rounded-lg ${semakanCurrentPage === 1 ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-slate-100'}">Sblm</button>
+                <button onclick="tukarMukaSuratSemakan(1)" class="px-3 py-1.5 text-xs font-bold border rounded-lg ${semakanCurrentPage === jumlahMukaSurat ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-slate-100'}">Seterusnya</button>
+            </div>
+        `;
+        tableContainer.appendChild(pagDiv);
+    }
+
+    function buangButangPagination() {
+        const lama = document.getElementById("kawalan-pagination-semakan");
+        if (lama) lama.remove();
+    }
+
+    function tukarMukaSuratSemakan(arah) {
+        const jumlahMukaSurat = Math.ceil(semakanFilteredDataUtama.length / semakanItemsPerPage);
+        if (arah === -1 && semakanCurrentPage > 1) {
+            semakanCurrentPage--;
+            paparkanMukaSuratSemakan();
+        } else if (arah === 1 && semakanCurrentPage < jumlahMukaSurat) {
+            semakanCurrentPage++;
+            paparkanMukaSuratSemakan();
+        }
+    }
+
+    function formatDateString(s) {
+        if(!s) return "-"; const d = new Date(s); if(isNaN(d.getTime())) return s;
+        return d.toLocaleDateString('ms-MY', {day:'2-digit', month:'2-digit', year:'numeric'}) + ' ' + d.toLocaleTimeString('ms-MY', {hour:'2-digit', minute:'2-digit', hour12:true});
+    }
+
+    ['semak-fType', 'semak-fSubject', 'semak-fSesi', 'semak-fYear'].forEach(id => {
+        document.getElementById(id).addEventListener('change', binaJadualSemakanUrusan);
+    });
+
+    function resetSemakFilters() {
+        ['semak-fType', 'semak-fSubject', 'semak-fSesi', 'semak-fYear'].forEach(id => document.getElementById(id).value = "");
+        binaJadualSemakanUrusan();
+    }
+
+    function toggleAdminBoxVisibility() { document.getElementById("semak-adminBox").classList.toggle("hidden"); }
+    
+    async function prosesAdminLogin() {
+        const pass = document.getElementById("semak-adminPass").value.trim();
+        if(!pass) return;
+        toggleLoader(true, "Mengesahkan Admin", "Menyemak kelayakan sekuriti...");
+        try {
+            const res = await fetch(GLOBAL_GAS_URL, { method: "POST", body: JSON.stringify({ action: "delete", submissionID: "AUTH_CHECK", adminPassword: pass }) });
+            const json = await res.json();
+            if (json.status === "error") { paparToast("Kata laluan salah!", "error"); }
+            else {
+                adminMode = true; adminPassword = pass; activeAdminKey = pass;
+                document.getElementById("semak-adminBox").classList.add("hidden");
+                kawalLajurAdminSemakanVisibility();
+                paparToast("Kuasa Pentadbir Aktif!", "success");
+                document.getElementById("semak-btnAdmin").className = "text-xs font-bold px-3 py-2 bg-green-100 border border-green-200 text-green-700 rounded-lg flex items-center gap-1";
+                document.getElementById("semak-btnAdmin").innerHTML = `<i class="ph-fill ph-shield-check"></i> Admin Aktif`;
+            }
+        } catch(e) { paparToast("Gagal melakukan pengesahan.", "error"); }
+        finally { toggleLoader(false); }
+    }
+
+    function kawalLajurAdminSemakanVisibility() { document.querySelectorAll('.semak-admin-col').forEach(c => c.classList.toggle('hidden', !adminMode)); if(!adminMode) document.getElementById("semak-bulkBar").classList.add('hidden'); }
+    function toggleSemakSelectAll(src) { document.querySelectorAll('.row-checkbox').forEach(c => c.checked = src.checked); kemaskiniUIAngkaTerpilihPukal(); }
+    function kemaskiniUIAngkaTerpilihPukal() { const c = document.querySelectorAll('.row-checkbox:checked').length; document.getElementById("semak-selectedCount").innerText = c; document.getElementById("semak-bulkBar").classList.toggle('hidden', c===0); }
+    
+    function bukaModalPadamSatu(id) { singleDeleteTargetId = id; itemsToDelete = [id]; document.getElementById("semak-deleteModal").classList.remove("hidden"); }
+    function closeDeleteModal() { document.getElementById("semak-deleteModal").classList.add("hidden"); }
+    function laksanaPadamPukal() { const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value); if(ids.length===0) return; itemsToDelete = ids; document.getElementById("semak-deleteModal").classList.remove("hidden"); }
+
+    document.getElementById("semak-btnConfirmDel").onclick = async () => {
+        closeDeleteModal();
+        toggleLoader(true, "Memadam Data", "Sedang membersihkan rekod terpilih dari Google Sheets...");
+        try {
+            const actionType = itemsToDelete.length > 1 ? "bulk_delete" : "delete";
+            const payload = { action: actionType, adminPassword: activeAdminKey };
+            if(actionType === "bulk_delete") payload.submissionIDs = itemsToDelete; else payload.rowNumber = itemsToDelete[0];
+
+            const res = await fetch(GLOBAL_GAS_URL, { method: "POST", body: JSON.stringify(payload) });
+            const json = await res.json();
+            if(json.status === "success") { paparToast("Rekod berjaya dibersihkan!", "success"); sedutDataUtamaDariPangkalan(); }
+            else { paparToast(json.message, "error"); }
+        } catch(e) { paparToast("Ralat operasi pemadaman.", "error"); }
+        finally { toggleLoader(false); }
+    };
+
+    function binaJadualPenjejakanTracking() {
+        const body = document.getElementById("tracking-tableBody");
+        if(!body) return;
+        body.innerHTML = '';
+
+        const petaKelasSubjek = new Map();
+        databaseMentahPBD.forEach(r => {
+            if(!r.KELAS || !r['MATA PELAJARAN']) return;
+            const kKey = `${String(r.KELAS).trim().toUpperCase()} | ${String(r['MATA PELAJARAN']).trim()}`;
+            if(!petaKelasSubjek.has(kKey)) petaKelasSubjek.set(kKey, 0);
+            petaKelasSubjek.set(kKey, petaKelasSubjek.get(kKey) + 1);
+        });
+
+        const semuaKelasUnik = [...new Set(databaseMentahPBD.concat(databaseMentahUjian).map(x => String(x.KELAS || '').trim().toUpperCase()).filter(Boolean))].sort();
+        const semuaSubjekUnik = [...new Set(databaseMentahPBD.map(x => String(x['MATA PELAJARAN'] || '').trim()).filter(Boolean))].sort();
+
+        let barisHTML = ''; let countBil = 0; let totalLengkap = 0;
+
+        semuaKelasUnik.forEach(kelas => {
+            semuaSubjekUnik.forEach(subjek => {
+                countBil++;
+                const cariKey = `${kelas} | ${subjek}`;
+                const adaData = petaKelasSubjek.has(cariKey);
+                const countMurid = adaData ? petaKelasSubjek.get(cariKey) : 0;
+                
+                if(adaData) totalLengkap++;
+
+                const lencanaStatus = adaData 
+                    ? `<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold text-[10px]">✓ Telah Diisi</span>`
+                    : `<span class="px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold text-[10px] border border-red-100">✗ Belum Diisi</span>`;
+
+                barisHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors text-slate-700">
+                        <td class="px-4 py-2.5 text-slate-400 font-mono text-[11px]">${countBil}</td>
+                        <td class="px-4 py-2.5 font-bold">${kelas}</td>
+                        <td class="px-4 py-2.5 text-slate-600">${subjek}</td>
+                        <td class="px-4 py-2.5 text-center font-semibold text-slate-500">${countMurid} orang</td>
+                        <td class="px-4 py-2.5 text-center">${lencanaStatus}</td>
+                    </tr>`;
+            });
+        });
+
+        if(countBil === 0) {
+            body.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 italic">Sistem memuat turun data secara berasingan. Jadual pengisian akan muncul selepas memproses keseluruhan data pelayan.</td></tr>`;
+            document.getElementById('tracking-summaryBadge').innerText = "Memproses / Lazy Loading";
+            document.getElementById('tracking-summaryBadge').className = `font-black text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-500`;
+        } else {
+            body.innerHTML = barisHTML;
+            const peratusLengkap = Math.round((totalLengkap / countBil) * 100);
+            document.getElementById('tracking-summaryBadge').innerText = `${peratusLengkap}% Pengisian Lengkap (${totalLengkap}/${countBil})`;
+            document.getElementById('tracking-summaryBadge').className = `font-black text-xs px-3 py-1 rounded-full ${peratusLengkap > 75 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`;
+        }
+    }
+
+    // =========================================================================
+    // FUNGSI MUAT NAIK DATA BERPERINGKAT (CHUNKING)
+    // =========================================================================
+    async function muatNaikDataPukalSecaraBerperingkat(dataMuridLengkap, bahagian, kelas) {
+        const SAIZ_CHUNK = 150; 
+        const jumlahChunk = Math.ceil(dataMuridLengkap.length / SAIZ_CHUNK);
+        let berjaya = 0;
+
+        toggleLoader(true, "Memuat Naik Data Pukal", `Memproses 0 daripada ${jumlahChunk} bahagian...`);
+
+        for (let i = 0; i < jumlahChunk; i++) {
+            const mula = i * SAIZ_CHUNK;
+            const tamat = mula + SAIZ_CHUNK;
+            const chunkData = dataMuridLengkap.slice(mula, tamat);
+
+            const payload = {
+                action: "upload_data_berkelompok",
+                bahagian: bahagian,
+                kelas: kelas,
+                data: chunkData
+            };
+
+            try {
+                document.getElementById("loading-subtitle").innerText = `Memuat naik bahagian ${i + 1} daripada ${jumlahChunk}...`;
+
+                const res = await fetch(GLOBAL_GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const json = await res.json();
+                
+                if (json.status === 'success') {
+                    berjaya++;
+                } else {
+                    throw new Error(json.message);
+                }
+
+            } catch (err) {
+                console.error(`Ralat pada chunk ${i + 1}:`, err);
+                paparToast(`Ralat ketika memuat naik bahagian ${i + 1}.`, "error");
+                toggleLoader(false);
+                return; 
+            }
+        }
+
+        toggleLoader(false);
+        paparToast(`Selesai! ${berjaya} bahagian data berjaya dimasukkan ke pangkalan.`, "success");
+        sedutDataUtamaDariPangkalan();
+    }
+  window.bukaModBentang = function(url) {
+        let bekas = document.getElementById('bekas-bentang-penuh');
+        if (!bekas) {
+            bekas = document.createElement('div');
+            bekas.id = 'bekas-bentang-penuh';
+            // Menggunakan w-screen dan h-screen untuk memaksa ia menutup seluruh tab pelayar
+            bekas.className = 'fixed top-0 left-0 w-screen h-screen z-[99999] bg-black hidden flex-col';
+            bekas.innerHTML = `
+                <div class="flex justify-between items-center p-3 bg-slate-900 text-white">
+                    <span class="text-sm font-bold flex items-center gap-2"><i class="ph-bold ph-projector-screen"></i> Mod Bentang</span>
+                    <button onclick="tutupModBentang()" class="bg-red-600 hover:bg-red-700 px-4 py-1.5 rounded-lg text-xs font-bold shadow-md transition-colors">Tutup & Keluar</button>
+                </div>
+                <iframe id="iframe-bentang" class="w-full flex-1 border-0 bg-slate-100" allow="fullscreen" allowfullscreen></iframe>
+            `;
+            document.body.appendChild(bekas);
+        }
+        
+        let urlBersih = url;
+        if (url.includes('drive.google.com/file/d/')) {
+            urlBersih = url.replace(/\/view.*$/, '/preview');
+        }
+        
+        document.getElementById('iframe-bentang').src = urlBersih;
+        bekas.classList.remove('hidden');
+        bekas.classList.add('flex');
+        
+        // Berikan masa 150ms supaya pelayar web sedia sebelum paksa ia masuk mod skrin penuh
+        setTimeout(() => {
+            try {
+                if (bekas.requestFullscreen) {
+                    bekas.requestFullscreen().catch(e => console.log("Sekatan:", e));
+                } else if (bekas.webkitRequestFullscreen) {
+                    bekas.webkitRequestFullscreen();
+                } else if (bekas.msRequestFullscreen) {
+                    bekas.msRequestFullscreen();
+                }
+            } catch (err) {}
+        }, 150);
+    };
+
+    window.tutupModBentang = function() {
+        const bekas = document.getElementById('bekas-bentang-penuh');
+        if (bekas) {
+            bekas.classList.add('hidden');
+            bekas.classList.remove('flex');
+            document.getElementById('iframe-bentang').src = '';
+        }
+        try {
+            if (document.fullscreenElement && document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        } catch(e) {}
+    };
+  </script>
+</body>
+</html>
